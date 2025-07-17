@@ -28,11 +28,11 @@ import (
 )
 
 type Server struct {
-	memoService      v1pb.MemoServiceClient
-	authService      v1pb.AuthServiceClient
-	workspaceService v1pb.WorkspaceServiceClient
-	userService      v1pb.UserServiceClient
-	resourceService  v1pb.ResourceServiceClient
+	memoService       v1pb.MemoServiceClient
+	authService       v1pb.AuthServiceClient
+	workspaceService  v1pb.WorkspaceServiceClient
+	userService       v1pb.UserServiceClient
+	attachmentService v1pb.AttachmentServiceClient
 
 	memoIdToName     *xsync.MapOf[int, string]
 	resourceIdToName *xsync.MapOf[int, string]
@@ -77,7 +77,7 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 				slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 				return err
 			}
-			req.Memo.Resources = append(req.Memo.Resources, &v1pb.Resource{
+			req.Memo.Attachments = append(req.Memo.Attachments, &v1pb.Attachment{
 				Name: name,
 			})
 		}
@@ -156,7 +156,7 @@ func (s *Server) DeleteResource(ctx echo.Context, resourceId int) error {
 		slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 		return err
 	}
-	_, err = s.resourceService.DeleteResource(grpcCtx, &v1pb.DeleteResourceRequest{
+	_, err = s.attachmentService.DeleteAttachment(grpcCtx, &v1pb.DeleteAttachmentRequest{
 		Name: name,
 	})
 	if err != nil {
@@ -192,17 +192,21 @@ func (s *Server) DeleteTag(ctx echo.Context) error {
 // GetCurrentUser implements api.ServerInterface.
 func (s *Server) GetCurrentUser(ctx echo.Context) error {
 	grpcCtx := s.prepareGrpcContext(ctx)
-	resp, err := s.authService.GetAuthStatus(grpcCtx, &v1pb.GetAuthStatusRequest{})
+	resp, err := s.authService.GetCurrentSession(grpcCtx, &v1pb.GetCurrentSessionRequest{})
 	if err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 		return err
 	}
+	if resp.GetUser() == nil {
+		slog.ErrorContext(ctx.Request().Context(), "current user not found")
+		return echo.NewHTTPError(http.StatusUnauthorized, "current user not found")
+	}
 	rowStatus := api.Normal
-	if resp.State == v1pb.State_ARCHIVED {
+	if resp.User.State == v1pb.State_ARCHIVED {
 		rowStatus = api.Archived
 	}
 	var role api.Role
-	switch resp.Role {
+	switch resp.User.Role {
 	case v1pb.User_HOST:
 		role = api.RoleHost
 	case v1pb.User_ADMIN:
@@ -211,14 +215,14 @@ func (s *Server) GetCurrentUser(ctx echo.Context) error {
 		role = api.RoleUser
 	}
 	return ctx.JSON(200, &api.User{
-		Id:        int(hashToInt53(strings.TrimPrefix(resp.Name, "users/"))),
-		AvatarUrl: &resp.AvatarUrl,
-		CreatedTs: utils.IntPtr(int(resp.CreateTime.AsTime().Unix())),
-		Email:     &resp.Email,
-		Username:  &resp.Username,
-		Nickname:  &resp.Nickname,
+		Id:        int(hashToInt53(strings.TrimPrefix(resp.User.Name, "users/"))),
+		AvatarUrl: &resp.User.AvatarUrl,
+		CreatedTs: utils.IntPtr(int(resp.User.CreateTime.AsTime().Unix())),
+		Email:     &resp.User.Email,
+		Username:  &resp.User.Username,
+		Nickname:  &resp.User.DisplayName,
 		RowStatus: &rowStatus,
-		UpdatedTs: utils.IntPtr(int(resp.UpdateTime.AsTime().Unix())),
+		UpdatedTs: utils.IntPtr(int(resp.User.UpdateTime.AsTime().Unix())),
 		Role:      &role,
 	})
 }
@@ -305,12 +309,12 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 	if params.CreatorId != nil {
 		req.Parent = fmt.Sprintf("users/%d", *params.CreatorId)
 	} else {
-		user, err := s.authService.GetAuthStatus(grpcCtx, &v1pb.GetAuthStatusRequest{})
+		user, err := s.authService.GetCurrentSession(grpcCtx, &v1pb.GetCurrentSessionRequest{})
 		if err != nil {
 			slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 			return err
 		}
-		req.Parent = user.Name
+		req.Parent = user.GetUser().GetName()
 	}
 	if params.RowStatus != nil && *params.RowStatus == api.ARCHIVED {
 		req.State = v1pb.State_ARCHIVED
@@ -395,7 +399,7 @@ func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosPar
 func (s *Server) ListResources(ctx echo.Context, params api.ListResourcesParams) error {
 	grpcCtx := s.prepareGrpcContext(ctx)
 
-	resp, err := s.resourceService.ListResources(grpcCtx, &v1pb.ListResourcesRequest{})
+	resp, err := s.attachmentService.ListAttachments(grpcCtx, &v1pb.ListAttachmentsRequest{})
 	if err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to list resources", "error", err)
 		return err
@@ -406,7 +410,7 @@ func (s *Server) ListResources(ctx echo.Context, params api.ListResourcesParams)
 	if params.Offset != nil {
 		offset = *params.Offset
 	}
-	for index, resource := range resp.Resources {
+	for index, resource := range resp.Attachments {
 		if offset > index {
 			continue
 		}
@@ -422,14 +426,14 @@ func (s *Server) ListResources(ctx echo.Context, params api.ListResourcesParams)
 func (s *Server) ListTags(ctx echo.Context) error {
 	grpcCtx := s.prepareGrpcContext(ctx)
 
-	user, err := s.authService.GetAuthStatus(grpcCtx, &v1pb.GetAuthStatusRequest{})
+	user, err := s.authService.GetCurrentSession(grpcCtx, &v1pb.GetCurrentSessionRequest{})
 	if err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 		return err
 	}
 
 	resp, err := s.userService.GetUserStats(grpcCtx, &v1pb.GetUserStatsRequest{
-		Name: user.Name,
+		Name: user.GetUser().GetName(),
 	})
 	if err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get user stats", "error", err)
@@ -511,14 +515,14 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "visibility")
 	}
 	if params.ResourceIdList != nil {
-		req.Memo.Resources = []*v1pb.Resource{}
+		req.Memo.Attachments = []*v1pb.Attachment{}
 		for _, resourceId := range *params.ResourceIdList {
 			name, err := s.searchResourceId(grpcCtx, resourceId)
 			if err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 				return err
 			}
-			req.Memo.Resources = append(req.Memo.Resources, &v1pb.Resource{
+			req.Memo.Attachments = append(req.Memo.Attachments, &v1pb.Attachment{
 				Name: name,
 			})
 			req.UpdateMask.Paths = append(req.UpdateMask.Paths, "resources")
@@ -593,18 +597,18 @@ func (s *Server) UpdateResource(ctx echo.Context, resourceId int) error {
 		slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 		return err
 	}
-	req := &v1pb.UpdateResourceRequest{
-		Resource: &v1pb.Resource{
+	req := &v1pb.UpdateAttachmentRequest{
+		Attachment: &v1pb.Attachment{
 			Name: name,
 		},
 		UpdateMask: &fieldmaskpb.FieldMask{},
 	}
 	if params.Filename != nil {
-		req.Resource.Filename = *params.Filename
+		req.Attachment.Filename = *params.Filename
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "filename")
 	}
 
-	resp, err := s.resourceService.UpdateResource(grpcCtx, req)
+	resp, err := s.attachmentService.UpdateAttachment(grpcCtx, req)
 	if err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to update resource", "error", err)
 		return err
@@ -641,8 +645,8 @@ func (s *Server) UploadResource(ctx echo.Context) error {
 	}
 
 	grpcCtx := s.prepareGrpcContext(ctx)
-	resp, err := s.resourceService.CreateResource(grpcCtx, &v1pb.CreateResourceRequest{
-		Resource: &v1pb.Resource{
+	resp, err := s.attachmentService.CreateAttachment(grpcCtx, &v1pb.CreateAttachmentRequest{
+		Attachment: &v1pb.Attachment{
 			Filename: file.Filename,
 			Type:     mimeType,
 			Content:  buf.Bytes(),
@@ -664,13 +668,13 @@ func NewServer(grpcAddr string) api.ServerInterface {
 	}
 
 	return &Server{
-		memoService:      v1pb.NewMemoServiceClient(conn),
-		authService:      v1pb.NewAuthServiceClient(conn),
-		workspaceService: v1pb.NewWorkspaceServiceClient(conn),
-		userService:      v1pb.NewUserServiceClient(conn),
-		resourceService:  v1pb.NewResourceServiceClient(conn),
-		memoIdToName:     xsync.NewMapOf[int, string](),
-		resourceIdToName: xsync.NewMapOf[int, string](),
+		memoService:       v1pb.NewMemoServiceClient(conn),
+		authService:       v1pb.NewAuthServiceClient(conn),
+		workspaceService:  v1pb.NewWorkspaceServiceClient(conn),
+		userService:       v1pb.NewUserServiceClient(conn),
+		attachmentService: v1pb.NewAttachmentServiceClient(conn),
+		memoIdToName:      xsync.NewMapOf[int, string](),
+		resourceIdToName:  xsync.NewMapOf[int, string](),
 	}
 }
 
@@ -682,7 +686,7 @@ func (s *Server) prepareGrpcContext(ctx echo.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx.Request().Context(), md)
 }
 
-func (s *Server) convertResource(resource *v1pb.Resource) *api.Resource {
+func (s *Server) convertResource(resource *v1pb.Attachment) *api.Resource {
 	id := int(hashToInt53(strings.TrimPrefix(resource.Name, "resources/")))
 	s.resourceIdToName.Store(id, resource.Name)
 	return &api.Resource{
@@ -711,7 +715,7 @@ func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
 	}
 
 	resources := []api.Resource{}
-	for _, resource := range memo.Resources {
+	for _, resource := range memo.Attachments {
 		resources = append(resources, *s.convertResource(resource))
 	}
 
@@ -770,12 +774,12 @@ func (s *Server) searchMemoId(ctx context.Context, memoId int) (string, error) {
 func (s *Server) searchResourceId(ctx context.Context, resourceId int) (string, error) {
 	name, ok := s.resourceIdToName.Load(resourceId)
 	if !ok {
-		resp, err := s.resourceService.ListResources(ctx, &v1pb.ListResourcesRequest{})
+		resp, err := s.attachmentService.ListAttachments(ctx, &v1pb.ListAttachmentsRequest{})
 		if err != nil {
 			return "", errors.Wrapf(err, "failed to list resources")
 		}
 
-		for _, resource := range resp.Resources {
+		for _, resource := range resp.Attachments {
 			id := int(hashToInt53(strings.TrimPrefix(resource.Name, "resources/")))
 			s.resourceIdToName.Store(id, resource.Name)
 			if id == resourceId {

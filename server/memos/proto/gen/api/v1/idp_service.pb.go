@@ -28,7 +28,8 @@ type IdentityProvider_Type int32
 
 const (
 	IdentityProvider_TYPE_UNSPECIFIED IdentityProvider_Type = 0
-	IdentityProvider_OAUTH2           IdentityProvider_Type = 1
+	// OAuth2 identity provider.
+	IdentityProvider_OAUTH2 IdentityProvider_Type = 1
 )
 
 // Enum value maps for IdentityProvider_Type.
@@ -72,15 +73,19 @@ func (IdentityProvider_Type) EnumDescriptor() ([]byte, []int) {
 
 type IdentityProvider struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the identityProvider.
-	// Format: identityProviders/{id}, id is the system generated auto-incremented id.
-	Name             string                  `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type             IdentityProvider_Type   `protobuf:"varint,2,opt,name=type,proto3,enum=memos.api.v1.IdentityProvider_Type" json:"type,omitempty"`
-	Title            string                  `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	IdentifierFilter string                  `protobuf:"bytes,4,opt,name=identifier_filter,json=identifierFilter,proto3" json:"identifier_filter,omitempty"`
-	Config           *IdentityProviderConfig `protobuf:"bytes,5,opt,name=config,proto3" json:"config,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The resource name of the identity provider.
+	// Format: identityProviders/{idp}
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	// Required. The type of the identity provider.
+	Type IdentityProvider_Type `protobuf:"varint,2,opt,name=type,proto3,enum=memos.api.v1.IdentityProvider_Type" json:"type,omitempty"`
+	// Required. The display title of the identity provider.
+	Title string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	// Optional. Filter applied to user identifiers.
+	IdentifierFilter string `protobuf:"bytes,4,opt,name=identifier_filter,json=identifierFilter,proto3" json:"identifier_filter,omitempty"`
+	// Required. Configuration for the identity provider.
+	Config        *IdentityProviderConfig `protobuf:"bytes,5,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *IdentityProvider) Reset() {
@@ -411,8 +416,9 @@ func (*ListIdentityProvidersRequest) Descriptor() ([]byte, []int) {
 }
 
 type ListIdentityProvidersResponse struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	IdentityProviders []*IdentityProvider    `protobuf:"bytes,1,rep,name=identity_providers,json=identityProviders,proto3" json:"identity_providers,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The list of identity providers.
+	IdentityProviders []*IdentityProvider `protobuf:"bytes,1,rep,name=identity_providers,json=identityProviders,proto3" json:"identity_providers,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -456,7 +462,8 @@ func (x *ListIdentityProvidersResponse) GetIdentityProviders() []*IdentityProvid
 
 type GetIdentityProviderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the identityProvider to get.
+	// Required. The resource name of the identity provider to get.
+	// Format: identityProviders/{idp}
 	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -501,10 +508,13 @@ func (x *GetIdentityProviderRequest) GetName() string {
 
 type CreateIdentityProviderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The identityProvider to create.
+	// Required. The identity provider to create.
 	IdentityProvider *IdentityProvider `protobuf:"bytes,1,opt,name=identity_provider,json=identityProvider,proto3" json:"identity_provider,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Optional. The ID to use for the identity provider, which will become the final component of the resource name.
+	// If not provided, the system will generate one.
+	IdentityProviderId string `protobuf:"bytes,2,opt,name=identity_provider_id,json=identityProviderId,proto3" json:"identity_provider_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *CreateIdentityProviderRequest) Reset() {
@@ -544,11 +554,18 @@ func (x *CreateIdentityProviderRequest) GetIdentityProvider() *IdentityProvider 
 	return nil
 }
 
+func (x *CreateIdentityProviderRequest) GetIdentityProviderId() string {
+	if x != nil {
+		return x.IdentityProviderId
+	}
+	return ""
+}
+
 type UpdateIdentityProviderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The identityProvider to update.
+	// Required. The identity provider to update.
 	IdentityProvider *IdentityProvider `protobuf:"bytes,1,opt,name=identity_provider,json=identityProvider,proto3" json:"identity_provider,omitempty"`
-	// The update mask applies to the resource. Only the top level fields of
+	// Required. The update mask applies to the resource. Only the top level fields of
 	// IdentityProvider are supported.
 	UpdateMask    *fieldmaskpb.FieldMask `protobuf:"bytes,2,opt,name=update_mask,json=updateMask,proto3" json:"update_mask,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -601,7 +618,8 @@ func (x *UpdateIdentityProviderRequest) GetUpdateMask() *fieldmaskpb.FieldMask {
 
 type DeleteIdentityProviderRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The name of the identityProvider to delete.
+	// Required. The resource name of the identity provider to delete.
+	// Format: identityProviders/{idp}
 	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -648,17 +666,18 @@ var File_api_v1_idp_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_idp_service_proto_rawDesc = "" +
 	"\n" +
-	"\x18api/v1/idp_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\"\x8a\x02\n" +
-	"\x10IdentityProvider\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\x127\n" +
-	"\x04type\x18\x02 \x01(\x0e2#.memos.api.v1.IdentityProvider.TypeR\x04type\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12+\n" +
-	"\x11identifier_filter\x18\x04 \x01(\tR\x10identifierFilter\x12<\n" +
-	"\x06config\x18\x05 \x01(\v2$.memos.api.v1.IdentityProviderConfigR\x06config\"(\n" +
+	"\x18api/v1/idp_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\"\x8b\x03\n" +
+	"\x10IdentityProvider\x12\x17\n" +
+	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12<\n" +
+	"\x04type\x18\x02 \x01(\x0e2#.memos.api.v1.IdentityProvider.TypeB\x03\xe0A\x02R\x04type\x12\x19\n" +
+	"\x05title\x18\x03 \x01(\tB\x03\xe0A\x02R\x05title\x120\n" +
+	"\x11identifier_filter\x18\x04 \x01(\tB\x03\xe0A\x01R\x10identifierFilter\x12A\n" +
+	"\x06config\x18\x05 \x01(\v2$.memos.api.v1.IdentityProviderConfigB\x03\xe0A\x02R\x06config\"(\n" +
 	"\x04Type\x12\x14\n" +
 	"\x10TYPE_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
-	"\x06OAUTH2\x10\x01\"e\n" +
+	"\x06OAUTH2\x10\x01:f\xeaAc\n" +
+	"\x1dmemos.api.v1/IdentityProvider\x12\x17identityProviders/{idp}\x1a\x04name*\x11identityProviders2\x10identityProvider\"e\n" +
 	"\x16IdentityProviderConfig\x12A\n" +
 	"\roauth2_config\x18\x01 \x01(\v2\x1a.memos.api.v1.OAuth2ConfigH\x00R\foauth2ConfigB\b\n" +
 	"\x06config\"\x86\x01\n" +
@@ -680,21 +699,24 @@ const file_api_v1_idp_service_proto_rawDesc = "" +
 	"\rfield_mapping\x18\a \x01(\v2\x1a.memos.api.v1.FieldMappingR\ffieldMapping\"\x1e\n" +
 	"\x1cListIdentityProvidersRequest\"n\n" +
 	"\x1dListIdentityProvidersResponse\x12M\n" +
-	"\x12identity_providers\x18\x01 \x03(\v2\x1e.memos.api.v1.IdentityProviderR\x11identityProviders\"0\n" +
-	"\x1aGetIdentityProviderRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name\"l\n" +
-	"\x1dCreateIdentityProviderRequest\x12K\n" +
-	"\x11identity_provider\x18\x01 \x01(\v2\x1e.memos.api.v1.IdentityProviderR\x10identityProvider\"\xa9\x01\n" +
-	"\x1dUpdateIdentityProviderRequest\x12K\n" +
-	"\x11identity_provider\x18\x01 \x01(\v2\x1e.memos.api.v1.IdentityProviderR\x10identityProvider\x12;\n" +
-	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskR\n" +
-	"updateMask\"3\n" +
-	"\x1dDeleteIdentityProviderRequest\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name2\xce\x06\n" +
+	"\x12identity_providers\x18\x01 \x03(\v2\x1e.memos.api.v1.IdentityProviderR\x11identityProviders\"W\n" +
+	"\x1aGetIdentityProviderRequest\x129\n" +
+	"\x04name\x18\x01 \x01(\tB%\xe0A\x02\xfaA\x1f\n" +
+	"\x1dmemos.api.v1/IdentityProviderR\x04name\"\xa8\x01\n" +
+	"\x1dCreateIdentityProviderRequest\x12P\n" +
+	"\x11identity_provider\x18\x01 \x01(\v2\x1e.memos.api.v1.IdentityProviderB\x03\xe0A\x02R\x10identityProvider\x125\n" +
+	"\x14identity_provider_id\x18\x02 \x01(\tB\x03\xe0A\x01R\x12identityProviderId\"\xb3\x01\n" +
+	"\x1dUpdateIdentityProviderRequest\x12P\n" +
+	"\x11identity_provider\x18\x01 \x01(\v2\x1e.memos.api.v1.IdentityProviderB\x03\xe0A\x02R\x10identityProvider\x12@\n" +
+	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
+	"updateMask\"Z\n" +
+	"\x1dDeleteIdentityProviderRequest\x129\n" +
+	"\x04name\x18\x01 \x01(\tB%\xe0A\x02\xfaA\x1f\n" +
+	"\x1dmemos.api.v1/IdentityProviderR\x04name2\xe2\x06\n" +
 	"\x17IdentityProviderService\x12\x93\x01\n" +
 	"\x15ListIdentityProviders\x12*.memos.api.v1.ListIdentityProvidersRequest\x1a+.memos.api.v1.ListIdentityProvidersResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/identityProviders\x12\x92\x01\n" +
-	"\x13GetIdentityProvider\x12(.memos.api.v1.GetIdentityProviderRequest\x1a\x1e.memos.api.v1.IdentityProvider\"1\xdaA\x04name\x82\xd3\xe4\x93\x02$\x12\"/api/v1/{name=identityProviders/*}\x12\x9b\x01\n" +
-	"\x16CreateIdentityProvider\x12+.memos.api.v1.CreateIdentityProviderRequest\x1a\x1e.memos.api.v1.IdentityProvider\"4\x82\xd3\xe4\x93\x02.:\x11identity_provider\"\x19/api/v1/identityProviders\x12\xd6\x01\n" +
+	"\x13GetIdentityProvider\x12(.memos.api.v1.GetIdentityProviderRequest\x1a\x1e.memos.api.v1.IdentityProvider\"1\xdaA\x04name\x82\xd3\xe4\x93\x02$\x12\"/api/v1/{name=identityProviders/*}\x12\xaf\x01\n" +
+	"\x16CreateIdentityProvider\x12+.memos.api.v1.CreateIdentityProviderRequest\x1a\x1e.memos.api.v1.IdentityProvider\"H\xdaA\x11identity_provider\x82\xd3\xe4\x93\x02.:\x11identity_provider\"\x19/api/v1/identityProviders\x12\xd6\x01\n" +
 	"\x16UpdateIdentityProvider\x12+.memos.api.v1.UpdateIdentityProviderRequest\x1a\x1e.memos.api.v1.IdentityProvider\"o\xdaA\x1didentity_provider,update_mask\x82\xd3\xe4\x93\x02I:\x11identity_provider24/api/v1/{identity_provider.name=identityProviders/*}\x12\x90\x01\n" +
 	"\x16DeleteIdentityProvider\x12+.memos.api.v1.DeleteIdentityProviderRequest\x1a\x16.google.protobuf.Empty\"1\xdaA\x04name\x82\xd3\xe4\x93\x02$*\"/api/v1/{name=identityProviders/*}B\fZ\n" +
 	"gen/api/v1b\x06proto3"
