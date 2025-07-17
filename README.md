@@ -68,7 +68,8 @@ services:
         container_name: mortis
         ports:
             - "5231:5231"
-        command: ["-grpc-addr", "memos:5230"]
+        entrypoint: ["/app/mortis"]
+        command: ["-grpc-addr=memos:5230"]
         depends_on:
             - memos
 ```

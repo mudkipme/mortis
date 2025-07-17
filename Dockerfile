@@ -11,4 +11,4 @@ FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/mortis .
 EXPOSE 5431
-CMD ["./mortis"]
+ENTRYPOINT ["./mortis"]
