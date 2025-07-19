@@ -743,7 +743,7 @@ components:
           description: Domain specific fields
         createdTs:
           type: integer
-        creatorID:
+        creatorId:
           type: integer
         id:
           type: integer
@@ -782,7 +782,7 @@ components:
       properties:
         createdTs:
           type: integer
-        creatorID:
+        creatorId:
           type: integer
           description: Standard fields
         externalLink:

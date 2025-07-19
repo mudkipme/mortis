@@ -692,6 +692,7 @@ func (s *Server) convertResource(resource *v1pb.Attachment) *api.Resource {
 	return &api.Resource{
 		Id:           id,
 		CreatedTs:    utils.IntPtr(int(resource.CreateTime.AsTime().Unix())),
+		CreatorId:    utils.IntPtr(0),
 		ExternalLink: utils.StringPtr(resource.ExternalLink),
 		Filename:     resource.Filename,
 		Name:         utils.StringPtr(resource.Name),
@@ -725,7 +726,7 @@ func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
 		Id:           id,
 		Content:      memo.Content,
 		CreatedTs:    int(memo.CreateTime.AsTime().Unix()),
-		CreatorID:    utils.IntPtr(int(hashToInt53(strings.TrimPrefix(memo.Creator, "users/")))),
+		CreatorId:    utils.IntPtr(int(hashToInt53(strings.TrimPrefix(memo.Creator, "users/")))),
 		Pinned:       utils.BoolPtr(memo.Pinned),
 		RowStatus:    &rowStatus,
 		UpdatedTs:    utils.IntPtr(int(memo.UpdateTime.AsTime().Unix())),

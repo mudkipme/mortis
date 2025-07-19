@@ -65,7 +65,7 @@ type Memo struct {
 	// Content Domain specific fields
 	Content   string `json:"content"`
 	CreatedTs int    `json:"createdTs"`
-	CreatorID *int   `json:"creatorID,omitempty"`
+	CreatorId *int   `json:"creatorId,omitempty"`
 	Id        int    `json:"id"`
 	ParentID  *int   `json:"parentID,omitempty"`
 
@@ -116,8 +116,8 @@ type Profile struct {
 type Resource struct {
 	CreatedTs *int `json:"createdTs,omitempty"`
 
-	// CreatorID Standard fields
-	CreatorID    *int    `json:"creatorID,omitempty"`
+	// CreatorId Standard fields
+	CreatorId    *int    `json:"creatorId,omitempty"`
 	ExternalLink *string `json:"externalLink,omitempty"`
 
 	// Filename Domain specific fields

@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http/httputil"
+	"net/url"
 
 	"github.com/labstack/echo/v4"
 	"github.com/mudkipme/mortis/api"
@@ -21,6 +23,12 @@ func main() {
 	e := echo.New()
 
 	api.RegisterHandlers(e, server)
+
+	// Default handler - proxy to gRPC address
+	e.Any("/*", echo.WrapHandler(httputil.NewSingleHostReverseProxy(&url.URL{
+		Scheme: "http",
+		Host:   *grpcAddr,
+	})))
 
 	listenAddr := fmt.Sprintf("%s:%d", *addr, *port)
 	log.Fatal(e.Start(listenAddr))
