@@ -525,7 +525,7 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 			req.Memo.Attachments = append(req.Memo.Attachments, &v1pb.Attachment{
 				Name: name,
 			})
-			req.UpdateMask.Paths = append(req.UpdateMask.Paths, "resources")
+			req.UpdateMask.Paths = append(req.UpdateMask.Paths, "attachments")
 		}
 	}
 	if params.RowStatus != nil {
