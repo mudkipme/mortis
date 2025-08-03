@@ -46,6 +46,14 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
+
+    location /o/r/ {
+        proxy_pass http://127.0.0.1:5231; # Mortis server
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
@@ -56,7 +64,7 @@ Here is an example `docker-compose.yml` file to run both Memos and Mortis:
 ```yaml
 services:
     memos:
-        image: neosmemo/memos:0.24.0
+        image: neosmemo/memos:0.25.0
         container_name: memos
         volumes:
             - ./data:/var/opt/memos
@@ -64,7 +72,7 @@ services:
             - "5230:5230"
 
     mortis:
-        image: ghcr.io/mudkipme/mortis:0.24.0
+        image: ghcr.io/mudkipme/mortis:0.25.0
         container_name: mortis
         ports:
             - "5231:5231"
