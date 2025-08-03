@@ -661,7 +661,24 @@ func (s *Server) UploadResource(ctx echo.Context) error {
 	return ctx.JSON(200, resource)
 }
 
-func NewServer(grpcAddr string) api.ServerInterface {
+func (s *Server) StreamResource(ctx echo.Context) error {
+	uid := ctx.Param("uid")
+
+	// Call the gRPC service
+	grpcCtx := s.prepareGrpcContext(ctx)
+	body, err := s.attachmentService.GetAttachmentBinary(grpcCtx, &v1pb.GetAttachmentBinaryRequest{
+		Name:      fmt.Sprintf("attachments/%s", uid),
+		Thumbnail: ctx.QueryParam("thumbnail") == "1",
+	})
+	if err != nil {
+		slog.ErrorContext(ctx.Request().Context(), "failed to get resource binary", "error", err)
+		return err
+	}
+
+	return ctx.Stream(200, body.ContentType, bytes.NewReader(body.Data))
+}
+
+func NewServer(grpcAddr string) *Server {
 	conn, err := grpc.NewClient(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		panic(err)
@@ -687,7 +704,7 @@ func (s *Server) prepareGrpcContext(ctx echo.Context) context.Context {
 }
 
 func (s *Server) convertResource(resource *v1pb.Attachment) *api.Resource {
-	id := int(hashToInt53(strings.TrimPrefix(resource.Name, "resources/")))
+	id := int(hashToInt53(strings.TrimPrefix(resource.Name, "attachments/")))
 	s.resourceIdToName.Store(id, resource.Name)
 	return &api.Resource{
 		Id:           id,
@@ -698,7 +715,7 @@ func (s *Server) convertResource(resource *v1pb.Attachment) *api.Resource {
 		Name:         utils.StringPtr(resource.Name),
 		Size:         utils.IntPtr(int(resource.Size)),
 		Type:         utils.StringPtr(resource.Type),
-		Uid:          utils.StringPtr(strings.TrimPrefix(resource.Name, "resources/")),
+		Uid:          utils.StringPtr(strings.TrimPrefix(resource.Name, "attachments/")),
 		UpdatedTs:    utils.IntPtr(int(resource.CreateTime.AsTime().Unix())),
 	}
 }
@@ -781,7 +798,7 @@ func (s *Server) searchResourceId(ctx context.Context, resourceId int) (string, 
 		}
 
 		for _, resource := range resp.Attachments {
-			id := int(hashToInt53(strings.TrimPrefix(resource.Name, "resources/")))
+			id := int(hashToInt53(strings.TrimPrefix(resource.Name, "attachments/")))
 			s.resourceIdToName.Store(id, resource.Name)
 			if id == resourceId {
 				name = resource.Name

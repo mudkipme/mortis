@@ -23,6 +23,8 @@ func main() {
 	e := echo.New()
 
 	api.RegisterHandlers(e, server)
+	e.GET("/o/r/:uid", server.StreamResource)
+	e.GET("/o/r/:uid/*", server.StreamResource)
 
 	// Default handler - proxy to gRPC address
 	e.Any("/*", echo.WrapHandler(httputil.NewSingleHostReverseProxy(&url.URL{
