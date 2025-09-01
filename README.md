@@ -57,6 +57,18 @@ server {
 }
 ```
 
+### Caddy Configuration Example
+
+Or if you prefer using caddy, here is an example of a configuration to proxy requests to both Memos and Mortis:
+
+```caddyfile
+yourdomain.com {
+    reverse_proxy /api/v1/* mortis:5231
+    reverse_proxy /o/r/* mortis:5231
+    reverse_proxy memos:5230
+}
+```
+
 ### Docker Compose Example
 
 Here is an example `docker-compose.yml` file to run both Memos and Mortis:
