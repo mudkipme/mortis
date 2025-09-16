@@ -308,14 +308,14 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 
 	req := &v1pb.ListMemosRequest{}
 	if params.CreatorId != nil {
-		req.Parent = fmt.Sprintf("users/%d", *params.CreatorId)
+		req.Filter = fmt.Sprintf("creator_id == %d", *params.CreatorId)
 	} else {
 		user, err := s.authService.GetCurrentSession(grpcCtx, &v1pb.GetCurrentSessionRequest{})
 		if err != nil {
 			slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 			return err
 		}
-		req.Parent = user.GetUser().GetName()
+		req.Filter = fmt.Sprintf("creator_id == %s", strings.TrimPrefix(user.GetUser().GetName(), "users/"))
 	}
 	if params.RowStatus != nil && *params.RowStatus == api.ARCHIVED {
 		req.State = v1pb.State_ARCHIVED
@@ -727,9 +727,10 @@ func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
 		rowStatus = api.Archived
 	}
 	visibility := api.Private
-	if memo.Visibility == v1pb.Visibility_PUBLIC {
+	switch memo.Visibility {
+	case v1pb.Visibility_PUBLIC:
 		visibility = api.Public
-	} else if memo.Visibility == v1pb.Visibility_PROTECTED {
+	case v1pb.Visibility_PROTECTED:
 		visibility = api.Protected
 	}
 

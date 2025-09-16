@@ -26,12 +26,8 @@ service MemoService {
   }
   // ListMemos lists memos with pagination and filter.
   rpc ListMemos(ListMemosRequest) returns (ListMemosResponse) {
-    option (google.api.http) = {
-      get: "/api/v1/memos"
-      additional_bindings: {get: "/api/v1/{parent=users/*}/memos"}
-    };
+    option (google.api.http) = {get: "/api/v1/memos"};
     option (google.api.method_signature) = "";
-    option (google.api.method_signature) = "parent";
   }
   // GetMemo gets a memo.
   rpc GetMemo(GetMemoRequest) returns (Memo) {
@@ -61,7 +57,10 @@ service MemoService {
   }
   // DeleteMemoTag deletes a tag for a memo.
   rpc DeleteMemoTag(DeleteMemoTagRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {delete: "/api/v1/{parent=memos/*}/tags/{tag}"};
+    option (google.api.http) = {
+      post: "/api/v1/{parent=memos/*}/tags:delete"
+      body: "*"
+    };
     option (google.api.method_signature) = "parent,tag";
   }
   // SetMemoAttachments sets attachments for a memo.
@@ -276,44 +275,32 @@ message CreateMemoRequest {
 }
 
 message ListMemosRequest {
-  // Optional. The parent is the owner of the memos.
-  // If not specified or `users/-`, it will list all memos.
-  // Format: users/{user}
-  string parent = 1 [
-    (google.api.field_behavior) = OPTIONAL,
-    (google.api.resource_reference) = {type: "memos.api.v1/User"}
-  ];
-
   // Optional. The maximum number of memos to return.
   // The service may return fewer than this value.
   // If unspecified, at most 50 memos will be returned.
   // The maximum value is 1000; values above 1000 will be coerced to 1000.
-  int32 page_size = 2 [(google.api.field_behavior) = OPTIONAL];
+  int32 page_size = 1 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. A page token, received from a previous `ListMemos` call.
   // Provide this to retrieve the subsequent page.
-  string page_token = 3 [(google.api.field_behavior) = OPTIONAL];
+  string page_token = 2 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. The state of the memos to list.
   // Default to `NORMAL`. Set to `ARCHIVED` to list archived memos.
-  State state = 4 [(google.api.field_behavior) = OPTIONAL];
+  State state = 3 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. The order to sort results by.
   // Default to "display_time desc".
   // Example: "display_time desc" or "create_time asc"
-  string order_by = 5 [(google.api.field_behavior) = OPTIONAL];
+  string order_by = 4 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. Filter to apply to the list results.
   // Filter is a CEL expression to filter memos.
   // Refer to `Shortcut.filter`.
-  string filter = 6 [(google.api.field_behavior) = OPTIONAL];
+  string filter = 5 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. If true, show deleted memos in the response.
-  bool show_deleted = 7 [(google.api.field_behavior) = OPTIONAL];
-
-  // [Deprecated] Old filter contains some specific conditions to filter memos.
-  // Format: "creator == 'users/{user}' && visibilities == ['PUBLIC', 'PROTECTED']"
-  string old_filter = 8;
+  bool show_deleted = 6 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message ListMemosResponse {
