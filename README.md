@@ -76,7 +76,7 @@ Here is an example `docker-compose.yml` file to run both Memos and Mortis:
 ```yaml
 services:
     memos:
-        image: neosmemo/memos:0.25.1
+        image: neosmemo/memos:0.25.3
         container_name: memos
         volumes:
             - ./data:/var/opt/memos
@@ -84,7 +84,7 @@ services:
             - "5230:5230"
 
     mortis:
-        image: ghcr.io/mudkipme/mortis:0.25.1
+        image: ghcr.io/mudkipme/mortis:0.25.3
         container_name: mortis
         ports:
             - "5231:5231"

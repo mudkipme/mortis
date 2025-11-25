@@ -169,24 +169,24 @@ func (s *Server) DeleteResource(ctx echo.Context, resourceId int) error {
 
 // DeleteTag implements api.ServerInterface.
 func (s *Server) DeleteTag(ctx echo.Context) error {
-	grpcCtx := s.prepareGrpcContext(ctx)
-	var params api.DeleteTagJSONRequestBody
-	if err := ctx.Bind(&params); err != nil {
-		slog.ErrorContext(ctx.Request().Context(), "failed to bind request body", "error", err)
-		return err
-	}
-	if params.Name == nil {
-		return ctx.JSON(200, false)
-	}
+	// grpcCtx := s.prepareGrpcContext(ctx)
+	// var params api.DeleteTagJSONRequestBody
+	// if err := ctx.Bind(&params); err != nil {
+	// 	slog.ErrorContext(ctx.Request().Context(), "failed to bind request body", "error", err)
+	// 	return err
+	// }
+	// if params.Name == nil {
+	// 	return ctx.JSON(200, false)
+	// }
 
-	_, err := s.memoService.DeleteMemoTag(grpcCtx, &v1pb.DeleteMemoTagRequest{
-		Parent: "memos/-",
-		Tag:    *params.Name,
-	})
-	if err != nil {
-		slog.ErrorContext(ctx.Request().Context(), "failed to delete tag", "error", err)
-		return err
-	}
+	// _, err := s.memoService.DeleteMemoTag(grpcCtx, &v1pb.DeleteMemoTagRequest{
+	// 	Parent: "memos/-",
+	// 	Tag:    *params.Name,
+	// })
+	// if err != nil {
+	// 	slog.ErrorContext(ctx.Request().Context(), "failed to delete tag", "error", err)
+	// 	return err
+	// }
 	return ctx.JSON(200, true)
 }
 
