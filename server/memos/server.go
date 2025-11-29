@@ -31,7 +31,7 @@ import (
 type Server struct {
 	memoService       v1pb.MemoServiceClient
 	authService       v1pb.AuthServiceClient
-	workspaceService  v1pb.WorkspaceServiceClient
+	instanceService   v1pb.InstanceServiceClient
 	userService       v1pb.UserServiceClient
 	attachmentService v1pb.AttachmentServiceClient
 
@@ -75,7 +75,12 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 		for _, resourceId := range *params.ResourceIdList {
 			name, err := s.searchResourceId(grpcCtx, resourceId)
 			if err != nil {
-				slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
+				slog.ErrorContext(
+					ctx.Request().Context(),
+					"failed to search resource id",
+					"error",
+					err,
+				)
 				return err
 			}
 			req.Memo.Attachments = append(req.Memo.Attachments, &v1pb.Attachment{
@@ -90,7 +95,12 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 			}
 			relatedName, err := s.searchMemoId(grpcCtx, *relation.RelatedMemoId)
 			if err != nil {
-				slog.ErrorContext(ctx.Request().Context(), "failed to search related memo id", "error", err)
+				slog.ErrorContext(
+					ctx.Request().Context(),
+					"failed to search related memo id",
+					"error",
+					err,
+				)
 				return err
 			}
 			var relationType v1pb.MemoRelation_Type
@@ -266,7 +276,9 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 
 	var relations []*api.MemoRelation
 	for _, relation := range resp.Relations {
-		relatedMemoID := int(hashToInt53(strings.TrimPrefix(relation.RelatedMemo.GetName(), "memos/")))
+		relatedMemoID := int(
+			hashToInt53(strings.TrimPrefix(relation.RelatedMemo.GetName(), "memos/")),
+		)
 		var relationType api.MemoRelationType
 		switch relation.Type {
 		case v1pb.MemoRelation_COMMENT:
@@ -288,9 +300,9 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 func (s *Server) GetStatus(ctx echo.Context) error {
 	grpcCtx := s.prepareGrpcContext(ctx)
 
-	resp, err := s.workspaceService.GetWorkspaceProfile(grpcCtx, &v1pb.GetWorkspaceProfileRequest{})
+	resp, err := s.instanceService.GetWorkspaceProfile(grpcCtx, &v1pb.GetWorkspaceProfileRequest{})
 	if err != nil {
-		slog.ErrorContext(ctx.Request().Context(), "failed to get workspace profile", "error", err)
+		slog.ErrorContext(ctx.Request().Context(), "failed to get instance profile", "error", err)
 		return err
 	}
 
@@ -376,7 +388,9 @@ func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosPar
 		if params.Limit != nil {
 			limit = *params.Limit
 		}
-		req.PageToken, _ = marshalPageToken(&v1pb.PageToken{Offset: int32(*params.Offset), Limit: int32(limit)})
+		req.PageToken, _ = marshalPageToken(
+			&v1pb.PageToken{Offset: int32(*params.Offset), Limit: int32(limit)},
+		)
 	}
 
 	// Call the gRPC service
@@ -520,7 +534,12 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 		for _, resourceId := range *params.ResourceIdList {
 			name, err := s.searchResourceId(grpcCtx, resourceId)
 			if err != nil {
-				slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
+				slog.ErrorContext(
+					ctx.Request().Context(),
+					"failed to search resource id",
+					"error",
+					err,
+				)
 				return err
 			}
 			req.Memo.Attachments = append(req.Memo.Attachments, &v1pb.Attachment{
@@ -554,7 +573,12 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 			}
 			relatedName, err := s.searchMemoId(grpcCtx, *relation.RelatedMemoId)
 			if err != nil {
-				slog.ErrorContext(ctx.Request().Context(), "failed to search related memo id", "error", err)
+				slog.ErrorContext(
+					ctx.Request().Context(),
+					"failed to search related memo id",
+					"error",
+					err,
+				)
 				return err
 			}
 			var relationType v1pb.MemoRelation_Type
@@ -680,7 +704,11 @@ func (s *Server) StreamResource(ctx echo.Context) error {
 }
 
 func NewServer(grpcAddr string) *Server {
-	conn, err := grpc.NewClient(grpcAddr, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)))
+	conn, err := grpc.NewClient(
+		grpcAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -688,7 +716,7 @@ func NewServer(grpcAddr string) *Server {
 	return &Server{
 		memoService:       v1pb.NewMemoServiceClient(conn),
 		authService:       v1pb.NewAuthServiceClient(conn),
-		workspaceService:  v1pb.NewWorkspaceServiceClient(conn),
+		instanceService:   v1pb.NewInstanceServiceClient(conn),
 		userService:       v1pb.NewUserServiceClient(conn),
 		attachmentService: v1pb.NewAttachmentServiceClient(conn),
 		memoIdToName:      xsync.NewMapOf[int, string](),

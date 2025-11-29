@@ -19,21 +19,21 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	InstanceService_GetInstanceProfile_FullMethodName    = "/memos.api.v1.InstanceService/GetInstanceProfile"
-	InstanceService_GetInstanceSetting_FullMethodName    = "/memos.api.v1.InstanceService/GetInstanceSetting"
-	InstanceService_UpdateInstanceSetting_FullMethodName = "/memos.api.v1.InstanceService/UpdateInstanceSetting"
+	InstanceService_GetWorkspaceProfile_FullMethodName    = "/memos.api.v1.InstanceService/GetWorkspaceProfile"
+	InstanceService_GetWorkspaceSetting_FullMethodName    = "/memos.api.v1.InstanceService/GetWorkspaceSetting"
+	InstanceService_UpdateWorkspaceSetting_FullMethodName = "/memos.api.v1.InstanceService/UpdateWorkspaceSetting"
 )
 
 // InstanceServiceClient is the client API for InstanceService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type InstanceServiceClient interface {
-	// Gets the instance profile.
-	GetInstanceProfile(ctx context.Context, in *GetInstanceProfileRequest, opts ...grpc.CallOption) (*InstanceProfile, error)
-	// Gets an instance setting.
-	GetInstanceSetting(ctx context.Context, in *GetInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
-	// Updates an instance setting.
-	UpdateInstanceSetting(ctx context.Context, in *UpdateInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
+	// Gets the workspace profile.
+	GetWorkspaceProfile(ctx context.Context, in *GetWorkspaceProfileRequest, opts ...grpc.CallOption) (*WorkspaceProfile, error)
+	// Gets a workspace setting.
+	GetWorkspaceSetting(ctx context.Context, in *GetWorkspaceSettingRequest, opts ...grpc.CallOption) (*WorkspaceSetting, error)
+	// Updates a workspace setting.
+	UpdateWorkspaceSetting(ctx context.Context, in *UpdateWorkspaceSettingRequest, opts ...grpc.CallOption) (*WorkspaceSetting, error)
 }
 
 type instanceServiceClient struct {
@@ -44,30 +44,30 @@ func NewInstanceServiceClient(cc grpc.ClientConnInterface) InstanceServiceClient
 	return &instanceServiceClient{cc}
 }
 
-func (c *instanceServiceClient) GetInstanceProfile(ctx context.Context, in *GetInstanceProfileRequest, opts ...grpc.CallOption) (*InstanceProfile, error) {
+func (c *instanceServiceClient) GetWorkspaceProfile(ctx context.Context, in *GetWorkspaceProfileRequest, opts ...grpc.CallOption) (*WorkspaceProfile, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InstanceProfile)
-	err := c.cc.Invoke(ctx, InstanceService_GetInstanceProfile_FullMethodName, in, out, cOpts...)
+	out := new(WorkspaceProfile)
+	err := c.cc.Invoke(ctx, InstanceService_GetWorkspaceProfile_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *instanceServiceClient) GetInstanceSetting(ctx context.Context, in *GetInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error) {
+func (c *instanceServiceClient) GetWorkspaceSetting(ctx context.Context, in *GetWorkspaceSettingRequest, opts ...grpc.CallOption) (*WorkspaceSetting, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InstanceSetting)
-	err := c.cc.Invoke(ctx, InstanceService_GetInstanceSetting_FullMethodName, in, out, cOpts...)
+	out := new(WorkspaceSetting)
+	err := c.cc.Invoke(ctx, InstanceService_GetWorkspaceSetting_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *instanceServiceClient) UpdateInstanceSetting(ctx context.Context, in *UpdateInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error) {
+func (c *instanceServiceClient) UpdateWorkspaceSetting(ctx context.Context, in *UpdateWorkspaceSettingRequest, opts ...grpc.CallOption) (*WorkspaceSetting, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(InstanceSetting)
-	err := c.cc.Invoke(ctx, InstanceService_UpdateInstanceSetting_FullMethodName, in, out, cOpts...)
+	out := new(WorkspaceSetting)
+	err := c.cc.Invoke(ctx, InstanceService_UpdateWorkspaceSetting_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +78,12 @@ func (c *instanceServiceClient) UpdateInstanceSetting(ctx context.Context, in *U
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
 type InstanceServiceServer interface {
-	// Gets the instance profile.
-	GetInstanceProfile(context.Context, *GetInstanceProfileRequest) (*InstanceProfile, error)
-	// Gets an instance setting.
-	GetInstanceSetting(context.Context, *GetInstanceSettingRequest) (*InstanceSetting, error)
-	// Updates an instance setting.
-	UpdateInstanceSetting(context.Context, *UpdateInstanceSettingRequest) (*InstanceSetting, error)
+	// Gets the workspace profile.
+	GetWorkspaceProfile(context.Context, *GetWorkspaceProfileRequest) (*WorkspaceProfile, error)
+	// Gets a workspace setting.
+	GetWorkspaceSetting(context.Context, *GetWorkspaceSettingRequest) (*WorkspaceSetting, error)
+	// Updates a workspace setting.
+	UpdateWorkspaceSetting(context.Context, *UpdateWorkspaceSettingRequest) (*WorkspaceSetting, error)
 	mustEmbedUnimplementedInstanceServiceServer()
 }
 
@@ -94,14 +94,14 @@ type InstanceServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedInstanceServiceServer struct{}
 
-func (UnimplementedInstanceServiceServer) GetInstanceProfile(context.Context, *GetInstanceProfileRequest) (*InstanceProfile, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetInstanceProfile not implemented")
+func (UnimplementedInstanceServiceServer) GetWorkspaceProfile(context.Context, *GetWorkspaceProfileRequest) (*WorkspaceProfile, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWorkspaceProfile not implemented")
 }
-func (UnimplementedInstanceServiceServer) GetInstanceSetting(context.Context, *GetInstanceSettingRequest) (*InstanceSetting, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetInstanceSetting not implemented")
+func (UnimplementedInstanceServiceServer) GetWorkspaceSetting(context.Context, *GetWorkspaceSettingRequest) (*WorkspaceSetting, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWorkspaceSetting not implemented")
 }
-func (UnimplementedInstanceServiceServer) UpdateInstanceSetting(context.Context, *UpdateInstanceSettingRequest) (*InstanceSetting, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateInstanceSetting not implemented")
+func (UnimplementedInstanceServiceServer) UpdateWorkspaceSetting(context.Context, *UpdateWorkspaceSettingRequest) (*WorkspaceSetting, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateWorkspaceSetting not implemented")
 }
 func (UnimplementedInstanceServiceServer) mustEmbedUnimplementedInstanceServiceServer() {}
 func (UnimplementedInstanceServiceServer) testEmbeddedByValue()                         {}
@@ -124,56 +124,56 @@ func RegisterInstanceServiceServer(s grpc.ServiceRegistrar, srv InstanceServiceS
 	s.RegisterService(&InstanceService_ServiceDesc, srv)
 }
 
-func _InstanceService_GetInstanceProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetInstanceProfileRequest)
+func _InstanceService_GetWorkspaceProfile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkspaceProfileRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InstanceServiceServer).GetInstanceProfile(ctx, in)
+		return srv.(InstanceServiceServer).GetWorkspaceProfile(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: InstanceService_GetInstanceProfile_FullMethodName,
+		FullMethod: InstanceService_GetWorkspaceProfile_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InstanceServiceServer).GetInstanceProfile(ctx, req.(*GetInstanceProfileRequest))
+		return srv.(InstanceServiceServer).GetWorkspaceProfile(ctx, req.(*GetWorkspaceProfileRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _InstanceService_GetInstanceSetting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetInstanceSettingRequest)
+func _InstanceService_GetWorkspaceSetting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWorkspaceSettingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InstanceServiceServer).GetInstanceSetting(ctx, in)
+		return srv.(InstanceServiceServer).GetWorkspaceSetting(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: InstanceService_GetInstanceSetting_FullMethodName,
+		FullMethod: InstanceService_GetWorkspaceSetting_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InstanceServiceServer).GetInstanceSetting(ctx, req.(*GetInstanceSettingRequest))
+		return srv.(InstanceServiceServer).GetWorkspaceSetting(ctx, req.(*GetWorkspaceSettingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _InstanceService_UpdateInstanceSetting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateInstanceSettingRequest)
+func _InstanceService_UpdateWorkspaceSetting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateWorkspaceSettingRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(InstanceServiceServer).UpdateInstanceSetting(ctx, in)
+		return srv.(InstanceServiceServer).UpdateWorkspaceSetting(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: InstanceService_UpdateInstanceSetting_FullMethodName,
+		FullMethod: InstanceService_UpdateWorkspaceSetting_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(InstanceServiceServer).UpdateInstanceSetting(ctx, req.(*UpdateInstanceSettingRequest))
+		return srv.(InstanceServiceServer).UpdateWorkspaceSetting(ctx, req.(*UpdateWorkspaceSettingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -186,16 +186,16 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*InstanceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetInstanceProfile",
-			Handler:    _InstanceService_GetInstanceProfile_Handler,
+			MethodName: "GetWorkspaceProfile",
+			Handler:    _InstanceService_GetWorkspaceProfile_Handler,
 		},
 		{
-			MethodName: "GetInstanceSetting",
-			Handler:    _InstanceService_GetInstanceSetting_Handler,
+			MethodName: "GetWorkspaceSetting",
+			Handler:    _InstanceService_GetWorkspaceSetting_Handler,
 		},
 		{
-			MethodName: "UpdateInstanceSetting",
-			Handler:    _InstanceService_UpdateInstanceSetting_Handler,
+			MethodName: "UpdateWorkspaceSetting",
+			Handler:    _InstanceService_UpdateWorkspaceSetting_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
