@@ -31,7 +31,7 @@ import (
 type Server struct {
 	memoService       v1pb.MemoServiceClient
 	authService       v1pb.AuthServiceClient
-	workspaceService  v1pb.WorkspaceServiceClient
+	instanceService   v1pb.InstanceServiceClient
 	userService       v1pb.UserServiceClient
 	attachmentService v1pb.AttachmentServiceClient
 
@@ -288,7 +288,7 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 func (s *Server) GetStatus(ctx echo.Context) error {
 	grpcCtx := s.prepareGrpcContext(ctx)
 
-	resp, err := s.workspaceService.GetWorkspaceProfile(grpcCtx, &v1pb.GetWorkspaceProfileRequest{})
+	resp, err := s.instanceService.GetInstanceProfile(grpcCtx, &v1pb.GetInstanceProfileRequest{})
 	if err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get workspace profile", "error", err)
 		return err
@@ -688,7 +688,7 @@ func NewServer(grpcAddr string) *Server {
 	return &Server{
 		memoService:       v1pb.NewMemoServiceClient(conn),
 		authService:       v1pb.NewAuthServiceClient(conn),
-		workspaceService:  v1pb.NewWorkspaceServiceClient(conn),
+		instanceService:   v1pb.NewInstanceServiceClient(conn),
 		userService:       v1pb.NewUserServiceClient(conn),
 		attachmentService: v1pb.NewAttachmentServiceClient(conn),
 		memoIdToName:      xsync.NewMapOf[int, string](),
