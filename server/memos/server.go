@@ -269,8 +269,14 @@ func (s *Server) GetStatus(ctx echo.Context) error {
 		return err
 	}
 
+	mode := "prod"
+	if resp.Demo {
+		mode = "demo"
+	}
+
 	return ctx.JSON(200, &api.SystemStatus{
 		Profile: &api.Profile{
+			Mode:    &mode,
 			Version: &resp.Version,
 		},
 	})
