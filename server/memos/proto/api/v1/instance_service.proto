@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package memos.api.v1;
 
+import "api/v1/user_service.proto";
 import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
@@ -34,18 +35,18 @@ service InstanceService {
 
 // Instance profile message containing basic instance information.
 message InstanceProfile {
-  // The name of instance owner.
-  // Format: users/{user}
-  string owner = 1;
-
   // Version is the current version of instance.
   string version = 2;
 
-  // Mode is the instance mode (e.g. "prod", "dev" or "demo").
-  string mode = 3;
+  // Demo indicates if the instance is in demo mode.
+  bool demo = 3;
 
   // Instance URL is the URL of the instance.
   string instance_url = 6;
+
+  // The first administrator who set up this instance.
+  // When null, instance requires initial setup (creating the first admin account).
+  User admin = 7;
 }
 
 // Request for instance profile.
@@ -83,9 +84,6 @@ message InstanceSetting {
 
   // General instance settings configuration.
   message GeneralSetting {
-    // theme is the name of the selected theme.
-    // This references a CSS file in the web/public/themes/ directory.
-    string theme = 1;
     // disallow_user_registration disallows user registration.
     bool disallow_user_registration = 2;
     // disallow_password_auth disallows password authentication.
@@ -111,7 +109,6 @@ message InstanceSetting {
       string title = 1;
       string description = 2;
       string logo_url = 3;
-      string locale = 4;
     }
   }
 
@@ -159,16 +156,8 @@ message InstanceSetting {
     int32 content_length_limit = 3;
     // enable_double_click_edit enables editing on double click.
     bool enable_double_click_edit = 4;
-    // enable_link_preview enables links preview.
-    bool enable_link_preview = 5;
     // reactions is the list of reactions.
     repeated string reactions = 7;
-    // disable_markdown_shortcuts disallow the registration of markdown shortcuts.
-    bool disable_markdown_shortcuts = 8;
-    // enable_blur_nsfw_content enables blurring of content marked as not safe for work (NSFW).
-    bool enable_blur_nsfw_content = 9;
-    // nsfw_tags is the list of tags that mark content as NSFW for blurring.
-    repeated string nsfw_tags = 10;
   }
 }
 

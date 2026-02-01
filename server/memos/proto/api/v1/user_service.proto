@@ -6,7 +6,6 @@ import "api/v1/common.proto";
 import "google/api/annotations.proto";
 import "google/api/client.proto";
 import "google/api/field_behavior.proto";
-import "google/api/httpbody.proto";
 import "google/api/resource.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/field_mask.proto";
@@ -53,12 +52,6 @@ service UserService {
     option (google.api.method_signature) = "name";
   }
 
-  // GetUserAvatar gets the avatar of a user.
-  rpc GetUserAvatar(GetUserAvatarRequest) returns (google.api.HttpBody) {
-    option (google.api.http) = {get: "/api/v1/{name=users/*}/avatar"};
-    option (google.api.method_signature) = "name";
-  }
-
   // ListAllUserStats returns statistics for all users.
   rpc ListAllUserStats(ListAllUserStatsRequest) returns (ListAllUserStatsResponse) {
     option (google.api.http) = {get: "/api/v1/users:stats"};
@@ -91,36 +84,25 @@ service UserService {
     option (google.api.method_signature) = "parent";
   }
 
-  // ListUserAccessTokens returns a list of access tokens for a user.
-  rpc ListUserAccessTokens(ListUserAccessTokensRequest) returns (ListUserAccessTokensResponse) {
-    option (google.api.http) = {get: "/api/v1/{parent=users/*}/accessTokens"};
+  // ListPersonalAccessTokens returns a list of Personal Access Tokens (PATs) for a user.
+  // PATs are long-lived tokens for API/script access, distinct from short-lived JWT access tokens.
+  rpc ListPersonalAccessTokens(ListPersonalAccessTokensRequest) returns (ListPersonalAccessTokensResponse) {
+    option (google.api.http) = {get: "/api/v1/{parent=users/*}/personalAccessTokens"};
     option (google.api.method_signature) = "parent";
   }
 
-  // CreateUserAccessToken creates a new access token for a user.
-  rpc CreateUserAccessToken(CreateUserAccessTokenRequest) returns (UserAccessToken) {
+  // CreatePersonalAccessToken creates a new Personal Access Token for a user.
+  // The token value is only returned once upon creation.
+  rpc CreatePersonalAccessToken(CreatePersonalAccessTokenRequest) returns (CreatePersonalAccessTokenResponse) {
     option (google.api.http) = {
-      post: "/api/v1/{parent=users/*}/accessTokens"
-      body: "access_token"
+      post: "/api/v1/{parent=users/*}/personalAccessTokens"
+      body: "*"
     };
-    option (google.api.method_signature) = "parent,access_token";
   }
 
-  // DeleteUserAccessToken deletes an access token.
-  rpc DeleteUserAccessToken(DeleteUserAccessTokenRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {delete: "/api/v1/{name=users/*/accessTokens/*}"};
-    option (google.api.method_signature) = "name";
-  }
-
-  // ListUserSessions returns a list of active sessions for a user.
-  rpc ListUserSessions(ListUserSessionsRequest) returns (ListUserSessionsResponse) {
-    option (google.api.http) = {get: "/api/v1/{parent=users/*}/sessions"};
-    option (google.api.method_signature) = "parent";
-  }
-
-  // RevokeUserSession revokes a specific session for a user.
-  rpc RevokeUserSession(RevokeUserSessionRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {delete: "/api/v1/{name=users/*/sessions/*}"};
+  // DeletePersonalAccessToken deletes a Personal Access Token.
+  rpc DeletePersonalAccessToken(DeletePersonalAccessTokenRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/{name=users/*/personalAccessTokens/*}"};
     option (google.api.method_signature) = "name";
   }
 
@@ -221,13 +203,10 @@ message User {
 
   // User role enumeration.
   enum Role {
-    // Unspecified role.
     ROLE_UNSPECIFIED = 0;
-    // Host role with full system access.
-    HOST = 1;
-    // Admin role with administrative privileges.
+    // Admin role with system access.
     ADMIN = 2;
-    // Regular user role.
+    // User role with limited access.
     USER = 3;
   }
 }
@@ -324,15 +303,6 @@ message DeleteUserRequest {
   bool force = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
-message GetUserAvatarRequest {
-  // Required. The resource name of the user.
-  // Format: users/{user}
-  string name = 1 [
-    (google.api.field_behavior) = REQUIRED,
-    (google.api.resource_reference) = {type: "memos.api.v1/User"}
-  ];
-}
-
 // User statistics messages
 message UserStats {
   option (google.api.resource) = {
@@ -404,8 +374,6 @@ message UserSetting {
 
   oneof value {
     GeneralSetting general_setting = 2;
-    SessionsSetting sessions_setting = 3;
-    AccessTokensSetting access_tokens_setting = 4;
     WebhooksSetting webhooks_setting = 5;
   }
 
@@ -414,10 +382,6 @@ message UserSetting {
     KEY_UNSPECIFIED = 0;
     // GENERAL is the key for general user settings.
     GENERAL = 1;
-    // SESSIONS is the key for user authentication sessions.
-    SESSIONS = 2;
-    // ACCESS_TOKENS is the key for access tokens.
-    ACCESS_TOKENS = 3;
     // WEBHOOKS is the key for user webhooks.
     WEBHOOKS = 4;
   }
@@ -432,18 +396,6 @@ message UserSetting {
     // This references a CSS file in the web/public/themes/ directory.
     // If not set, the default theme will be used.
     string theme = 4 [(google.api.field_behavior) = OPTIONAL];
-  }
-
-  // User authentication sessions configuration.
-  message SessionsSetting {
-    // List of active user sessions.
-    repeated UserSession sessions = 1;
-  }
-
-  // User access tokens configuration.
-  message AccessTokensSetting {
-    // List of user access tokens.
-    repeated UserAccessToken access_tokens = 1;
   }
 
   // User webhooks configuration.
@@ -503,142 +455,90 @@ message ListUserSettingsResponse {
   int32 total_size = 3;
 }
 
-// User access token message
-message UserAccessToken {
+// PersonalAccessToken represents a long-lived token for API/script access.
+// PATs are distinct from short-lived JWT access tokens used for session authentication.
+message PersonalAccessToken {
   option (google.api.resource) = {
-    type: "memos.api.v1/UserAccessToken"
-    pattern: "users/{user}/accessTokens/{access_token}"
-    singular: "userAccessToken"
-    plural: "userAccessTokens"
+    type: "memos.api.v1/PersonalAccessToken"
+    pattern: "users/{user}/personalAccessTokens/{personal_access_token}"
+    singular: "personalAccessToken"
+    plural: "personalAccessTokens"
   };
 
-  // The resource name of the access token.
-  // Format: users/{user}/accessTokens/{access_token}
+  // The resource name of the personal access token.
+  // Format: users/{user}/personalAccessTokens/{personal_access_token}
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
-  // Output only. The access token value.
-  string access_token = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // The description of the token.
+  string description = 2 [(google.api.field_behavior) = OPTIONAL];
 
-  // The description of the access token.
-  string description = 3 [(google.api.field_behavior) = OPTIONAL];
-
-  // Output only. The issued timestamp.
-  google.protobuf.Timestamp issued_at = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // Output only. The creation timestamp.
+  google.protobuf.Timestamp created_at = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Optional. The expiration timestamp.
-  google.protobuf.Timestamp expires_at = 5 [(google.api.field_behavior) = OPTIONAL];
+  google.protobuf.Timestamp expires_at = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // Output only. The last used timestamp.
+  google.protobuf.Timestamp last_used_at = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
-message ListUserAccessTokensRequest {
-  // Required. The parent resource whose access tokens will be listed.
+message ListPersonalAccessTokensRequest {
+  // Required. The parent resource whose personal access tokens will be listed.
   // Format: users/{user}
   string parent = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {type: "memos.api.v1/User"}
   ];
 
-  // Optional. The maximum number of access tokens to return.
+  // Optional. The maximum number of tokens to return.
   int32 page_size = 2 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. A page token for pagination.
   string page_token = 3 [(google.api.field_behavior) = OPTIONAL];
 }
 
-message ListUserAccessTokensResponse {
-  // The list of access tokens.
-  repeated UserAccessToken access_tokens = 1;
+message ListPersonalAccessTokensResponse {
+  // The list of personal access tokens.
+  repeated PersonalAccessToken personal_access_tokens = 1;
 
   // A token for the next page of results.
   string next_page_token = 2;
 
-  // The total count of access tokens.
+  // The total count of personal access tokens.
   int32 total_size = 3;
 }
 
-message CreateUserAccessTokenRequest {
-  // Required. The parent resource where this access token will be created.
+message CreatePersonalAccessTokenRequest {
+  // Required. The parent resource where this token will be created.
   // Format: users/{user}
   string parent = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {type: "memos.api.v1/User"}
   ];
 
-  // Required. The access token to create.
-  UserAccessToken access_token = 2 [(google.api.field_behavior) = REQUIRED];
+  // Optional. Description of the personal access token.
+  string description = 2 [(google.api.field_behavior) = OPTIONAL];
 
-  // Optional. The access token ID to use.
-  string access_token_id = 3 [(google.api.field_behavior) = OPTIONAL];
+  // Optional. Expiration duration in days (0 = never expires).
+  int32 expires_in_days = 3 [(google.api.field_behavior) = OPTIONAL];
 }
 
-message DeleteUserAccessTokenRequest {
-  // Required. The resource name of the access token to delete.
-  // Format: users/{user}/accessTokens/{access_token}
+message CreatePersonalAccessTokenResponse {
+  // The personal access token metadata.
+  PersonalAccessToken personal_access_token = 1;
+
+  // The actual token value - only returned on creation.
+  // This is the only time the token value will be visible.
+  string token = 2;
+}
+
+message DeletePersonalAccessTokenRequest {
+  // Required. The resource name of the personal access token to delete.
+  // Format: users/{user}/personalAccessTokens/{personal_access_token}
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
-    (google.api.resource_reference) = {type: "memos.api.v1/UserAccessToken"}
+    (google.api.resource_reference) = {type: "memos.api.v1/PersonalAccessToken"}
   ];
-}
-
-message UserSession {
-  option (google.api.resource) = {
-    type: "memos.api.v1/UserSession"
-    pattern: "users/{user}/sessions/{session}"
-    name_field: "name"
-  };
-
-  // The resource name of the session.
-  // Format: users/{user}/sessions/{session}
-  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
-
-  // The session ID.
-  string session_id = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
-
-  // The timestamp when the session was created.
-  google.protobuf.Timestamp create_time = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
-
-  // The timestamp when the session was last accessed.
-  // Used for sliding expiration calculation (last_accessed_time + 2 weeks).
-  google.protobuf.Timestamp last_accessed_time = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
-
-  // Client information associated with this session.
-  ClientInfo client_info = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
-
-  message ClientInfo {
-    // User agent string of the client.
-    string user_agent = 1;
-
-    // IP address of the client.
-    string ip_address = 2;
-
-    // Optional. Device type (e.g., "mobile", "desktop", "tablet").
-    string device_type = 3 [(google.api.field_behavior) = OPTIONAL];
-
-    // Optional. Operating system (e.g., "iOS 17.0", "Windows 11").
-    string os = 4 [(google.api.field_behavior) = OPTIONAL];
-
-    // Optional. Browser name and version (e.g., "Chrome 119.0").
-    string browser = 5 [(google.api.field_behavior) = OPTIONAL];
-  }
-}
-
-message ListUserSessionsRequest {
-  // Required. The resource name of the parent.
-  // Format: users/{user}
-  string parent = 1 [
-    (google.api.field_behavior) = REQUIRED,
-    (google.api.resource_reference) = {type: "memos.api.v1/User"}
-  ];
-}
-
-message ListUserSessionsResponse {
-  // The list of user sessions.
-  repeated UserSession sessions = 1;
-}
-
-message RevokeUserSessionRequest {
-  // The name of the session to revoke.
-  // Format: users/{user}/sessions/{session}
-  string name = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 // UserWebhook represents a webhook owned by a user.

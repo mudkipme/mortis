@@ -15,21 +15,21 @@ import (
 func main() {
 	addr := flag.String("addr", "0.0.0.0", "Listen address")
 	port := flag.Int("port", 5231, "Listen port")
-	grpcAddr := flag.String("grpc-addr", "127.0.0.1:5230", "gRPC server address")
+	serverAddr := flag.String("grpc-addr", "127.0.0.1:5230", "Memos HTTP server address")
 	flag.Parse()
 
-	server := memos.NewServer(*grpcAddr)
+	server := memos.NewServer(*serverAddr)
 
 	e := echo.New()
 
 	api.RegisterHandlers(e, server)
 	e.GET("/o/r/:uid", server.StreamResource)
-	e.GET("/o/r/:uid/*", server.StreamResource)
+	e.GET("/o/r/:uid/:filename", server.StreamResource)
 
 	// Default handler - proxy to gRPC address
 	e.Any("/*", echo.WrapHandler(httputil.NewSingleHostReverseProxy(&url.URL{
 		Scheme: "http",
-		Host:   *grpcAddr,
+		Host:   *serverAddr,
 	})))
 
 	listenAddr := fmt.Sprintf("%s:%d", *addr, *port)

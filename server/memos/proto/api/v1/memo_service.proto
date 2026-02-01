@@ -100,7 +100,7 @@ service MemoService {
   }
   // DeleteMemoReaction deletes a reaction for a memo.
   rpc DeleteMemoReaction(DeleteMemoReactionRequest) returns (google.protobuf.Empty) {
-    option (google.api.http) = {delete: "/api/v1/{name=reactions/*}"};
+    option (google.api.http) = {delete: "/api/v1/{name=memos/*/reactions/*}"};
     option (google.api.method_signature) = "name";
   }
 }
@@ -115,14 +115,14 @@ enum Visibility {
 message Reaction {
   option (google.api.resource) = {
     type: "memos.api.v1/Reaction"
-    pattern: "reactions/{reaction}"
+    pattern: "memos/{memo}/reactions/{reaction}"
     name_field: "name"
     singular: "reaction"
     plural: "reactions"
   };
 
   // The resource name of the reaction.
-  // Format: reactions/{reaction}
+  // Format: memos/{memo}/reactions/{reaction}
   string name = 1 [
     (google.api.field_behavior) = OUTPUT_ONLY,
     (google.api.field_behavior) = IDENTIFIER
@@ -173,11 +173,13 @@ message Memo {
     (google.api.resource_reference) = {type: "memos.api.v1/User"}
   ];
 
-  // Output only. The creation timestamp.
-  google.protobuf.Timestamp create_time = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // The creation timestamp.
+  // If not set on creation, the server will set it to the current time.
+  google.protobuf.Timestamp create_time = 4 [(google.api.field_behavior) = OPTIONAL];
 
-  // Output only. The last update timestamp.
-  google.protobuf.Timestamp update_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+  // The last update timestamp.
+  // If not set on creation, the server will set it to the current time.
+  google.protobuf.Timestamp update_time = 5 [(google.api.field_behavior) = OPTIONAL];
 
   // The display timestamp of the memo.
   google.protobuf.Timestamp display_time = 6 [(google.api.field_behavior) = OPTIONAL];
@@ -501,7 +503,7 @@ message UpsertMemoReactionRequest {
 
 message DeleteMemoReactionRequest {
   // Required. The resource name of the reaction to delete.
-  // Format: reactions/{reaction}
+  // Format: memos/{memo}/reactions/{reaction}
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {type: "memos.api.v1/Reaction"}
