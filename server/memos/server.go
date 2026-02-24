@@ -198,8 +198,13 @@ func (s *Server) GetCurrentUser(ctx echo.Context) error {
 	case v1pb.User_USER:
 		role = api.RoleUser
 	}
+	userID, err := strconv.Atoi(strings.TrimPrefix(resp.User.Name, "users/"))
+	if err != nil {
+		slog.ErrorContext(ctx.Request().Context(), "failed to parse user id", "name", resp.User.Name, "error", err)
+		return err
+	}
 	return ctx.JSON(200, &api.User{
-		Id:        int(hashToInt53(strings.TrimPrefix(resp.User.Name, "users/"))),
+		Id:        userID,
 		AvatarUrl: &resp.User.AvatarUrl,
 		CreatedTs: utils.IntPtr(int(resp.User.CreateTime.AsTime().Unix())),
 		Email:     &resp.User.Email,
@@ -403,7 +408,7 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 
 // ListPublicMemos implements api.ServerInterface.
 func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosParams) error {
-	filter := "visibility == \"PUBLIC\""
+	filter := "visibility in [\"PUBLIC\", \"PROTECTED\"]"
 	var allResp []*v1pb.Memo
 	if params.Limit == nil && params.Offset == nil {
 		pageToken := ""
@@ -481,11 +486,11 @@ func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosPar
 		}
 	}
 
-	memos := []*api.Memo{}
+	memos := make([]*api.Memo, 0, len(allResp))
 	for _, memo := range allResp {
-		m := s.convertMemo(memo)
-		memos = append(memos, m)
+		memos = append(memos, s.convertMemo(memo))
 	}
+	s.populateMemoCreatorNames(ctx, allResp, memos)
 
 	// Convert the response to the API response
 	return ctx.JSON(200, memos)
@@ -973,16 +978,75 @@ func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
 
 	id := int(hashToInt53(strings.TrimPrefix(memo.Name, "memos/")))
 	s.memoIdToName.Store(id, memo.Name)
+	var creatorID *int
+	if memo.Creator != "" {
+		if parsed, err := strconv.Atoi(strings.TrimPrefix(memo.Creator, "users/")); err == nil {
+			creatorID = utils.IntPtr(parsed)
+		}
+	}
 	return &api.Memo{
 		Id:           id,
 		Content:      memo.Content,
 		CreatedTs:    int(memo.CreateTime.AsTime().Unix()),
-		CreatorId:    utils.IntPtr(int(hashToInt53(strings.TrimPrefix(memo.Creator, "users/")))),
+		CreatorId:    creatorID,
 		Pinned:       utils.BoolPtr(memo.Pinned),
 		RowStatus:    &rowStatus,
 		UpdatedTs:    utils.IntPtr(int(memo.UpdateTime.AsTime().Unix())),
 		Visibility:   &visibility,
 		ResourceList: &resources,
+	}
+}
+
+func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*v1pb.Memo, apiMemos []*api.Memo) {
+	creatorNames := make(map[string]string)
+	missingCreators := make([]string, 0)
+	seenMissing := make(map[string]struct{})
+
+	for _, memo := range sourceMemos {
+		if memo == nil || memo.Creator == "" {
+			continue
+		}
+		userKey, err := strconv.Atoi(strings.TrimPrefix(memo.Creator, "users/"))
+		if err != nil {
+			continue
+		}
+		if cached, ok := s.userIdToName.Load(userKey); ok && cached != "" {
+			creatorNames[memo.Creator] = cached
+			continue
+		}
+		if _, ok := seenMissing[memo.Creator]; ok {
+			continue
+		}
+		seenMissing[memo.Creator] = struct{}{}
+		missingCreators = append(missingCreators, memo.Creator)
+	}
+
+	for _, creator := range missingCreators {
+		resp := &v1pb.User{}
+		if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/"+creator, nil, nil, resp); err != nil {
+			slog.WarnContext(ctx.Request().Context(), "failed to get memo creator", "creator", creator, "error", err)
+			continue
+		}
+		name := resp.GetDisplayName()
+		if name == "" {
+			name = resp.GetUsername()
+		}
+		if name == "" {
+			continue
+		}
+		creatorNames[creator] = name
+		if userKey, err := strconv.Atoi(strings.TrimPrefix(creator, "users/")); err == nil {
+			s.userIdToName.Store(userKey, name)
+		}
+	}
+
+	for i, memo := range sourceMemos {
+		if i >= len(apiMemos) || memo == nil {
+			continue
+		}
+		if name, ok := creatorNames[memo.Creator]; ok && name != "" {
+			apiMemos[i].CreatorName = utils.StringPtr(name)
+		}
 	}
 }
 

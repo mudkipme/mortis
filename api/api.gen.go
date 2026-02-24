@@ -63,11 +63,12 @@ type DeleteTagRequest struct {
 // Memo defines model for Memo.
 type Memo struct {
 	// Content Domain specific fields
-	Content   string `json:"content"`
-	CreatedTs int    `json:"createdTs"`
-	CreatorId *int   `json:"creatorId,omitempty"`
-	Id        int    `json:"id"`
-	ParentID  *int   `json:"parentID,omitempty"`
+	Content     string  `json:"content"`
+	CreatedTs   int     `json:"createdTs"`
+	CreatorId   *int    `json:"creatorId,omitempty"`
+	CreatorName *string `json:"creatorName,omitempty"`
+	Id          int     `json:"id"`
+	ParentID    *int    `json:"parentID,omitempty"`
 
 	// Pinned Composed fields
 	Pinned       *bool       `json:"pinned,omitempty"`
