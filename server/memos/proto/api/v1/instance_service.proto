@@ -8,6 +8,7 @@ import "google/api/client.proto";
 import "google/api/field_behavior.proto";
 import "google/api/resource.proto";
 import "google/protobuf/field_mask.proto";
+import "google/type/color.proto";
 
 option go_package = "gen/api/v1";
 
@@ -69,6 +70,9 @@ message InstanceSetting {
     GeneralSetting general_setting = 2;
     StorageSetting storage_setting = 3;
     MemoRelatedSetting memo_related_setting = 4;
+    TagsSetting tags_setting = 5;
+    NotificationSetting notification_setting = 6;
+    AISetting ai_setting = 7;
   }
 
   // Enumeration of instance setting keys.
@@ -80,6 +84,12 @@ message InstanceSetting {
     STORAGE = 2;
     // MEMO_RELATED is the key for memo related settings.
     MEMO_RELATED = 3;
+    // TAGS is the key for tag metadata.
+    TAGS = 4;
+    // NOTIFICATION is the key for notification transport settings.
+    NOTIFICATION = 5;
+    // AI is the key for AI provider settings.
+    AI = 6;
   }
 
   // General instance settings configuration.
@@ -148,8 +158,6 @@ message InstanceSetting {
 
   // Memo-related instance settings and policies.
   message MemoRelatedSetting {
-    // disallow_public_visibility disallows set memo as public visibility.
-    bool disallow_public_visibility = 1;
     // display_with_update_time orders and displays memo with update time.
     bool display_with_update_time = 2;
     // content_length_limit is the limit of content length. Unit is byte.
@@ -158,6 +166,70 @@ message InstanceSetting {
     bool enable_double_click_edit = 4;
     // reactions is the list of reactions.
     repeated string reactions = 7;
+  }
+
+  // Metadata for a tag.
+  message TagMetadata {
+    // Optional background color for the tag label.
+    // When unset, the default tag color is used.
+    google.type.Color background_color = 1;
+    // Whether memos with this tag should have their content blurred.
+    bool blur_content = 2;
+  }
+
+  // Tag metadata configuration.
+  message TagsSetting {
+    // Map of tag name pattern to tag metadata.
+    // Each key is treated as an anchored regular expression (^pattern$),
+    // so a single entry like "project/.*" matches all tags under that prefix.
+    // Exact tag names are also valid (they are trivially valid regex patterns).
+    map<string, TagMetadata> tags = 1;
+  }
+
+  // Notification transport configuration.
+  message NotificationSetting {
+    EmailSetting email = 1;
+
+    // Email delivery configuration for notifications.
+    message EmailSetting {
+      bool enabled = 1;
+      string smtp_host = 2;
+      int32 smtp_port = 3;
+      string smtp_username = 4;
+      string smtp_password = 5;
+      string from_email = 6;
+      string from_name = 7;
+      string reply_to = 8;
+      bool use_tls = 9;
+      bool use_ssl = 10;
+    }
+  }
+
+  // AI provider configuration settings.
+  message AISetting {
+    // providers is the list of AI provider configurations available instance-wide.
+    repeated AIProviderConfig providers = 1;
+  }
+
+  // AIProviderConfig represents one callable AI provider connection.
+  message AIProviderConfig {
+    string id = 1;
+    string title = 2;
+    AIProviderType type = 3;
+    string endpoint = 4;
+    // api_key is write-only and is never returned by GetInstanceSetting.
+    string api_key = 5 [(google.api.field_behavior) = INPUT_ONLY];
+    // api_key_set indicates whether an API key is stored for this provider.
+    bool api_key_set = 8 [(google.api.field_behavior) = OUTPUT_ONLY];
+    // api_key_hint is a masked hint for the stored API key.
+    string api_key_hint = 9 [(google.api.field_behavior) = OUTPUT_ONLY];
+  }
+
+  // AIProviderType is the provider implementation type.
+  enum AIProviderType {
+    AI_PROVIDER_TYPE_UNSPECIFIED = 0;
+    OPENAI = 1;
+    GEMINI = 2;
   }
 }
 

@@ -19,10 +19,16 @@ service UserService {
     option (google.api.http) = {get: "/api/v1/users"};
   }
 
-  // GetUser gets a user by ID or username.
-  // Supports both numeric IDs and username strings:
-  //   - users/{id}       (e.g., users/101)
-  //   - users/{username} (e.g., users/steven)
+  // BatchGetUsers returns active users by usernames.
+  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/users:batchGet"
+      body: "*"
+    };
+  }
+
+  // GetUser gets a user by username.
+  // Format: users/{username} (e.g., users/steven)
   rpc GetUser(GetUserRequest) returns (User) {
     option (google.api.http) = {get: "/api/v1/{name=users/*}"};
     option (google.api.method_signature) = "name";
@@ -244,12 +250,17 @@ message ListUsersResponse {
   int32 total_size = 3;
 }
 
+message BatchGetUsersRequest {
+  repeated string usernames = 1;
+}
+
+message BatchGetUsersResponse {
+  repeated User users = 1;
+}
+
 message GetUserRequest {
   // Required. The resource name of the user.
-  // Supports both numeric IDs and username strings:
-  //   - users/{id}       (e.g., users/101)
-  //   - users/{username} (e.g., users/steven)
-  // Format: users/{id_or_username}
+  // Format: users/{username}
   string name = 1 [
     (google.api.field_behavior) = REQUIRED,
     (google.api.resource_reference) = {type: "memos.api.v1/User"}
@@ -362,14 +373,14 @@ message ListAllUserStatsResponse {
 message UserSetting {
   option (google.api.resource) = {
     type: "memos.api.v1/UserSetting"
-    pattern: "users/{user}/settings/{setting}"
+    pattern: "users/{username}/settings/{setting}"
     singular: "userSetting"
     plural: "userSettings"
   };
 
   // The name of the user setting.
-  // Format: users/{user}/settings/{setting}, {setting} is the key for the setting.
-  // For example, "users/123/settings/GENERAL" for general settings.
+  // Format: users/{username}/settings/{setting}, {setting} is the key for the setting.
+  // For example, "users/steven/settings/GENERAL" for general settings.
   string name = 1 [(google.api.field_behavior) = IDENTIFIER];
 
   oneof value {
@@ -617,6 +628,9 @@ message UserNotification {
     (google.api.resource_reference) = {type: "memos.api.v1/User"}
   ];
 
+  // The sender user details.
+  User sender_user = 8 [(google.api.field_behavior) = OUTPUT_ONLY];
+
   // The status of the notification.
   Status status = 3 [(google.api.field_behavior) = OPTIONAL];
 
@@ -626,8 +640,42 @@ message UserNotification {
   // The type of the notification.
   Type type = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
 
-  // The activity ID associated with this notification.
-  optional int32 activity_id = 6 [(google.api.field_behavior) = OPTIONAL];
+  oneof payload {
+    MemoCommentPayload memo_comment = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+    MemoMentionPayload memo_mention = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+  }
+
+  message MemoCommentPayload {
+    // The memo name of comment.
+    // Format: memos/{memo}
+    string memo = 1;
+
+    // The name of related memo.
+    // Format: memos/{memo}
+    string related_memo = 2;
+
+    // Preview text of the comment memo.
+    string memo_snippet = 3;
+
+    // Preview text of the related memo.
+    string related_memo_snippet = 4;
+  }
+
+  message MemoMentionPayload {
+    // The memo that contains the mention.
+    // Format: memos/{memo}
+    string memo = 1;
+
+    // The related parent memo when the mention was created in a comment.
+    // Format: memos/{memo}
+    string related_memo = 2;
+
+    // Preview text of the memo that contains the mention.
+    string memo_snippet = 3;
+
+    // Preview text of the related parent memo.
+    string related_memo_snippet = 4;
+  }
 
   enum Status {
     STATUS_UNSPECIFIED = 0;
@@ -638,6 +686,7 @@ message UserNotification {
   enum Type {
     TYPE_UNSPECIFIED = 0;
     MEMO_COMMENT = 1;
+    MEMO_MENTION = 2;
   }
 }
 

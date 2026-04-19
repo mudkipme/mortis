@@ -33,6 +33,7 @@ type Server struct {
 	memoIdToName     *xsync.MapOf[int, string]
 	resourceIdToName *xsync.MapOf[int, string]
 	userIdToName     *xsync.MapOf[int, string]
+	userNameToLabel  *xsync.MapOf[string, string]
 }
 
 // CreateMemo implements api.ServerInterface.
@@ -198,11 +199,7 @@ func (s *Server) GetCurrentUser(ctx echo.Context) error {
 	case v1pb.User_USER:
 		role = api.RoleUser
 	}
-	userID, err := strconv.Atoi(strings.TrimPrefix(resp.User.Name, "users/"))
-	if err != nil {
-		slog.ErrorContext(ctx.Request().Context(), "failed to parse user id", "name", resp.User.Name, "error", err)
-		return err
-	}
+	userID := s.cacheUserName(resp.User.Name)
 	return ctx.JSON(200, &api.User{
 		Id:        userID,
 		AvatarUrl: &resp.User.AvatarUrl,
@@ -291,7 +288,12 @@ func (s *Server) GetStatus(ctx echo.Context) error {
 func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 	filter := ""
 	if params.CreatorId != nil {
-		filter = fmt.Sprintf("creator_id == %d", *params.CreatorId)
+		name, err := s.searchUserId(ctx, *params.CreatorId)
+		if err != nil {
+			slog.ErrorContext(ctx.Request().Context(), "failed to search user id", "creatorId", *params.CreatorId, "error", err)
+			return err
+		}
+		filter = s.memoCreatorFilter(name)
 	} else {
 		user := &v1pb.GetCurrentUserResponse{}
 		if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/auth/me", nil, nil, user); err != nil {
@@ -299,8 +301,7 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 			return err
 		}
 		if user.GetUser() != nil {
-			userId, _ := strconv.Atoi(strings.TrimPrefix(user.GetUser().GetName(), "users/"))
-			filter = fmt.Sprintf("creator_id == %d", userId)
+			filter = s.memoCreatorFilter(user.GetUser().GetName())
 		}
 	}
 
@@ -878,6 +879,7 @@ func NewServer(serverAddr string) *Server {
 		memoIdToName:     xsync.NewMapOf[int, string](),
 		resourceIdToName: xsync.NewMapOf[int, string](),
 		userIdToName:     xsync.NewMapOf[int, string](),
+		userNameToLabel:  xsync.NewMapOf[string, string](),
 	}
 }
 
@@ -980,9 +982,7 @@ func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
 	s.memoIdToName.Store(id, memo.Name)
 	var creatorID *int
 	if memo.Creator != "" {
-		if parsed, err := strconv.Atoi(strings.TrimPrefix(memo.Creator, "users/")); err == nil {
-			creatorID = utils.IntPtr(parsed)
-		}
+		creatorID = utils.IntPtr(s.cacheUserName(memo.Creator))
 	}
 	return &api.Memo{
 		Id:           id,
@@ -1006,11 +1006,8 @@ func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*v1pb.
 		if memo == nil || memo.Creator == "" {
 			continue
 		}
-		userKey, err := strconv.Atoi(strings.TrimPrefix(memo.Creator, "users/"))
-		if err != nil {
-			continue
-		}
-		if cached, ok := s.userIdToName.Load(userKey); ok && cached != "" {
+		s.cacheUserName(memo.Creator)
+		if cached, ok := s.userNameToLabel.Load(memo.Creator); ok && cached != "" {
 			creatorNames[memo.Creator] = cached
 			continue
 		}
@@ -1035,9 +1032,8 @@ func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*v1pb.
 			continue
 		}
 		creatorNames[creator] = name
-		if userKey, err := strconv.Atoi(strings.TrimPrefix(creator, "users/")); err == nil {
-			s.userIdToName.Store(userKey, name)
-		}
+		s.cacheUserName(creator)
+		s.userNameToLabel.Store(creator, name)
 	}
 
 	for i, memo := range sourceMemos {
@@ -1048,6 +1044,65 @@ func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*v1pb.
 			apiMemos[i].CreatorName = utils.StringPtr(name)
 		}
 	}
+}
+
+func (s *Server) memoCreatorFilter(name string) string {
+	if name == "" {
+		return ""
+	}
+	if numericID, err := strconv.Atoi(strings.TrimPrefix(name, "users/")); err == nil {
+		return fmt.Sprintf("creator_id == %d", numericID)
+	}
+	return fmt.Sprintf("creator == %q", name)
+}
+
+func (s *Server) cacheUserName(name string) int {
+	if name == "" {
+		return 0
+	}
+	userID := legacyUserID(name)
+	s.userIdToName.Store(userID, name)
+	return userID
+}
+
+func legacyUserID(name string) int {
+	token := strings.TrimPrefix(name, "users/")
+	if parsed, err := strconv.Atoi(token); err == nil {
+		return parsed
+	}
+	return int(hashToInt53(token))
+}
+
+func (s *Server) searchUserId(ctx echo.Context, userId int) (string, error) {
+	name, ok := s.userIdToName.Load(userId)
+	if !ok {
+		currentPageToken := ""
+		for {
+			query := url.Values{}
+			query.Set("pageSize", "200")
+			if currentPageToken != "" {
+				query.Set("pageToken", currentPageToken)
+			}
+			resp := &v1pb.ListUsersResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/users", query, nil, resp); err != nil {
+				return "", errors.Wrap(err, "failed to list users")
+			}
+			for _, user := range resp.Users {
+				candidate := s.cacheUserName(user.GetName())
+				if candidate == userId {
+					name = user.GetName()
+				}
+			}
+			if name != "" || resp.NextPageToken == "" {
+				break
+			}
+			currentPageToken = resp.NextPageToken
+		}
+	}
+	if name == "" {
+		return "", errors.New("user not found")
+	}
+	return name, nil
 }
 
 func (s *Server) searchMemoId(ctx echo.Context, memoId int) (string, error) {

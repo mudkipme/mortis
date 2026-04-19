@@ -9,6 +9,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/puzpuzpuz/xsync/v3 v3.5.1
+	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80
 	google.golang.org/genproto/googleapis/api v0.0.0-20250212204824-5a70512c5d8b
 	google.golang.org/grpc v1.69.4
 	google.golang.org/protobuf v1.36.4
