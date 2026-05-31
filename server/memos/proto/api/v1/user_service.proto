@@ -366,6 +366,11 @@ message UserStats {
   // The creation timestamps of the user's memos.
   repeated google.protobuf.Timestamp memo_created_timestamps = 7;
 
+  // The latest update timestamps of the user's memos (one per memo,
+  // mirrors memo_created_timestamps). Used by the activity heatmap when
+  // the client's view is set to update_time basis.
+  repeated google.protobuf.Timestamp memo_updated_timestamps = 8;
+
   // The pinned memos of the user.
   repeated string pinned_memos = 5;
 
@@ -391,7 +396,12 @@ message GetUserStatsRequest {
 }
 
 message ListAllUserStatsRequest {
-  // This endpoint doesn't take any parameters.
+  // Optional. The state of memos to include. Defaults to NORMAL.
+  State state = 1 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Filter to apply to memo stats.
+  // Uses the same filter syntax as ListMemos.
+  string filter = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message ListAllUserStatsResponse {

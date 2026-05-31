@@ -126,6 +126,17 @@ service MemoService {
   rpc GetMemoByShare(GetMemoByShareRequest) returns (Memo) {
     option (google.api.http) = {get: "/api/v1/shares/{share_id}"};
   }
+  // GetLinkMetadata gets metadata for a link.
+  rpc GetLinkMetadata(GetLinkMetadataRequest) returns (LinkMetadata) {
+    option (google.api.http) = {get: "/api/v1/memos/-/linkMetadata"};
+  }
+  // BatchGetLinkMetadata gets metadata for links.
+  rpc BatchGetLinkMetadata(BatchGetLinkMetadataRequest) returns (BatchGetLinkMetadataResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/memos/-/linkMetadata:batchGet"
+      body: "*"
+    };
+  }
 }
 
 enum Visibility {
@@ -594,4 +605,33 @@ message DeleteMemoShareRequest {
 message GetMemoByShareRequest {
   // Required. The share token extracted from the share URL (/s/{share_id}).
   string share_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetLinkMetadataRequest {
+  // Required. The link URL.
+  string url = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message BatchGetLinkMetadataRequest {
+  // Required. The link URLs.
+  repeated string urls = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message BatchGetLinkMetadataResponse {
+  // The link metadata list, in the same order as the input URLs.
+  repeated LinkMetadata link_metadata = 1;
+}
+
+message LinkMetadata {
+  // The original link URL.
+  string url = 1;
+
+  // The link title.
+  string title = 2;
+
+  // The link description.
+  string description = 3;
+
+  // The link image URL.
+  string image = 4;
 }
