@@ -117,6 +117,7 @@ message CreateAttachmentRequest {
 
   // Optional. The attachment ID to use for this attachment.
   // If empty, a unique ID will be generated.
+  // Format: ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,34}[a-zA-Z0-9])?$
   string attachment_id = 2 [(google.api.field_behavior) = OPTIONAL];
 }
 
@@ -149,9 +150,6 @@ message ListAttachmentsResponse {
   // A token that can be sent as `page_token` to retrieve the next page.
   // If this field is omitted, there are no subsequent pages.
   string next_page_token = 2;
-
-  // The total count of attachments (may be approximate).
-  int32 total_size = 3;
 }
 
 message GetAttachmentRequest {
