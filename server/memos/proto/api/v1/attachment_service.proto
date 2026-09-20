@@ -21,6 +21,16 @@ service AttachmentService {
     };
     option (google.api.method_signature) = "attachment";
   }
+  // UploadAttachment uploads a file in bounded chunks. The first call carries
+  // the spec and returns an upload_id; later calls carry that upload_id.
+  // Uploads are bound to the authenticated user, expire after 30 minutes of
+  // inactivity, and do not survive a server restart.
+  rpc UploadAttachment(UploadAttachmentRequest) returns (UploadAttachmentResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/attachments:upload"
+      body: "*"
+    };
+  }
   // ListAttachments lists all attachments.
   rpc ListAttachments(ListAttachmentsRequest) returns (ListAttachmentsResponse) {
     option (google.api.http) = {get: "/api/v1/attachments"};
@@ -73,6 +83,58 @@ message MotionMedia {
   bool has_embedded_video = 5;
 }
 
+// MediaMetadata contains normalized metadata explicitly supplied by a client.
+// The server validates and stores this data but does not extract it from the media file.
+message MediaMetadata {
+  // Optional. Display-oriented width in pixels.
+  optional int32 width = 1;
+  // Optional. Display-oriented height in pixels.
+  optional int32 height = 2;
+
+  oneof details {
+    PhotoMetadata photo = 3;
+    VideoMetadata video = 4;
+  }
+}
+
+message PhotoMetadata {
+  // Optional. Capture time as recorded by the source media.
+  MediaCaptureTime capture_time = 1;
+  // Optional. Geographic location recorded by the source media.
+  MediaLocation location = 2;
+  // Optional. EXIF orientation value from 1 through 8 as recorded by the source file.
+  // This value is informational and must not be reapplied to the stored attachment;
+  // width and height already describe its display-oriented dimensions.
+  optional int32 source_exif_orientation = 3;
+  string camera_make = 4;
+  string camera_model = 5;
+  string lens_model = 6;
+  optional double f_number = 7;
+  optional double exposure_time_seconds = 8;
+  optional int32 iso = 9;
+  optional double focal_length_mm = 10;
+}
+
+message MediaCaptureTime {
+  // Local date and time without a time zone, formatted as YYYY-MM-DDTHH:mm:ss[.fraction].
+  string local_date_time = 1;
+  // Optional. UTC offset formatted as Z or +/-HH:MM.
+  optional string utc_offset = 2;
+}
+
+message MediaLocation {
+  // Optional. WGS84 latitude in decimal degrees. Must be provided with longitude.
+  optional double latitude = 1;
+  // Optional. WGS84 longitude in decimal degrees. Must be provided with latitude.
+  optional double longitude = 2;
+  // Optional. Signed altitude in meters relative to sea level.
+  optional double altitude_meters = 3;
+}
+
+message VideoMetadata {
+  optional double duration_seconds = 1;
+}
+
 message Attachment {
   option (google.api.resource) = {
     type: "memos.api.v1/Attachment"
@@ -109,6 +171,12 @@ message Attachment {
 
   // Optional. Motion media metadata.
   MotionMedia motion_media = 9 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Immutable normalized media metadata explicitly supplied by the client at creation time.
+  MediaMetadata media_metadata = 10 [
+    (google.api.field_behavior) = OPTIONAL,
+    (google.api.field_behavior) = IMMUTABLE
+  ];
 }
 
 message CreateAttachmentRequest {
@@ -119,6 +187,61 @@ message CreateAttachmentRequest {
   // If empty, a unique ID will be generated.
   // Format: ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,34}[a-zA-Z0-9])?$
   string attachment_id = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message UploadAttachmentRequest {
+  // Required. Start a new upload or continue an existing one.
+  oneof upload {
+    // Starts a new upload. The same call may also carry data and finish_write.
+    UploadAttachmentSpec spec = 1;
+
+    // Continues the upload identified by a previous response.
+    string upload_id = 2;
+  }
+
+  // Required. Zero-based byte offset at which data is written. Must equal the
+  // committed size, except when retrying the most recently accepted chunk
+  // with identical bytes and offset, which is accepted without writing again.
+  int64 write_offset = 3 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. File bytes, at most max_chunk_size long. With no data and
+  // finish_write false, the call reports progress without writing, and
+  // write_offset is ignored.
+  bytes data = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Finalize the upload after writing data. The committed size must
+  // then equal total_size. Any later call for the same upload_id returns the
+  // created attachment.
+  bool finish_write = 5 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message UploadAttachmentSpec {
+  // Required. Metadata for the attachment to create. content must be empty;
+  // file bytes are sent in data.
+  Attachment attachment = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. The attachment ID to use for this attachment.
+  // If empty, a unique ID will be generated.
+  // Format: ^[a-zA-Z0-9]([a-zA-Z0-9-]{0,34}[a-zA-Z0-9])?$
+  string attachment_id = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Total size of the file in bytes before media processing.
+  // Zero represents an empty file.
+  int64 total_size = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message UploadAttachmentResponse {
+  // Opaque ID for subsequent calls. This is not a resource name.
+  string upload_id = 1;
+
+  // Number of file bytes committed so far.
+  int64 committed_size = 2;
+
+  // Set once the upload has been finalized.
+  Attachment attachment = 3;
+
+  // Maximum number of data bytes accepted in one call.
+  int32 max_chunk_size = 4;
 }
 
 message ListAttachmentsRequest {
@@ -135,12 +258,19 @@ message ListAttachmentsRequest {
   // Optional. Filter to apply to the list results.
   // Example: "mime_type==\"image/png\"" or "filename.contains(\"test\")"
   // Supported operators: =, !=, <, <=, >, >=, : (contains), in
-  // Supported fields: filename, mime_type, create_time, memo
+  // Supported fields: filename, mime_type, create_time, memo_id, space.
+  // `space` only supports a non-negated `==` comparison with a Space resource
+  // name or null.
+  // `space` is the linked memo's space resource name, or null when the
+  // attachment is unlinked or its linked memo has no space.
   string filter = 3 [(google.api.field_behavior) = OPTIONAL];
 
   // Optional. The order to sort results by.
   // Example: "create_time desc" or "filename asc"
   string order_by = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  reserved 5, 6;
+  reserved "space", "unassigned";
 }
 
 message ListAttachmentsResponse {

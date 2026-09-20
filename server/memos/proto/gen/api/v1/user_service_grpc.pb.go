@@ -8,6 +8,7 @@ package v1
 
 import (
 	context "context"
+	httpbody "google.golang.org/genproto/googleapis/api/httpbody"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -28,9 +29,16 @@ const (
 	UserService_DeleteUser_FullMethodName                  = "/memos.api.v1.UserService/DeleteUser"
 	UserService_ListAllUserStats_FullMethodName            = "/memos.api.v1.UserService/ListAllUserStats"
 	UserService_GetUserStats_FullMethodName                = "/memos.api.v1.UserService/GetUserStats"
+	UserService_ExportMemos_FullMethodName                 = "/memos.api.v1.UserService/ExportMemos"
+	UserService_ImportMemos_FullMethodName                 = "/memos.api.v1.UserService/ImportMemos"
 	UserService_GetUserSetting_FullMethodName              = "/memos.api.v1.UserService/GetUserSetting"
 	UserService_UpdateUserSetting_FullMethodName           = "/memos.api.v1.UserService/UpdateUserSetting"
 	UserService_ListUserSettings_FullMethodName            = "/memos.api.v1.UserService/ListUserSettings"
+	UserService_ListMemoViews_FullMethodName               = "/memos.api.v1.UserService/ListMemoViews"
+	UserService_GetMemoView_FullMethodName                 = "/memos.api.v1.UserService/GetMemoView"
+	UserService_CreateMemoView_FullMethodName              = "/memos.api.v1.UserService/CreateMemoView"
+	UserService_UpdateMemoView_FullMethodName              = "/memos.api.v1.UserService/UpdateMemoView"
+	UserService_DeleteMemoView_FullMethodName              = "/memos.api.v1.UserService/DeleteMemoView"
 	UserService_ListLinkedIdentities_FullMethodName        = "/memos.api.v1.UserService/ListLinkedIdentities"
 	UserService_CreateLinkedIdentity_FullMethodName        = "/memos.api.v1.UserService/CreateLinkedIdentity"
 	UserService_GetLinkedIdentity_FullMethodName           = "/memos.api.v1.UserService/GetLinkedIdentity"
@@ -69,12 +77,37 @@ type UserServiceClient interface {
 	ListAllUserStats(ctx context.Context, in *ListAllUserStatsRequest, opts ...grpc.CallOption) (*ListAllUserStatsResponse, error)
 	// GetUserStats returns statistics for a specific user.
 	GetUserStats(ctx context.Context, in *GetUserStatsRequest, opts ...grpc.CallOption) (*UserStats, error)
+	// ExportMemos writes every memo the user created, with comments, archived
+	// memos, and attachment files, as a Memos export file (a ZIP file, see
+	// docs/design/memos-export-format.md). Only the user may export their own
+	// memos. The body is the archive; content_type is its media type.
+	ExportMemos(ctx context.Context, in *ExportMemosRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error)
+	// ImportMemos uploads a Memos export file in bounded chunks and imports it into
+	// the user's memos. The first call carries the spec and returns an
+	// upload_id; later calls carry that upload_id. A finishing call with
+	// validate_only returns the plan and keeps the archive staged; a finishing
+	// call without it imports and returns the report. Uploads are bound to the
+	// authenticated user, expire after 30 minutes of inactivity, and do not
+	// survive a server restart.
+	ImportMemos(ctx context.Context, in *ImportMemosRequest, opts ...grpc.CallOption) (*ImportMemosResponse, error)
 	// GetUserSetting returns the user setting.
 	GetUserSetting(ctx context.Context, in *GetUserSettingRequest, opts ...grpc.CallOption) (*UserSetting, error)
 	// UpdateUserSetting updates the user setting.
 	UpdateUserSetting(ctx context.Context, in *UpdateUserSettingRequest, opts ...grpc.CallOption) (*UserSetting, error)
 	// ListUserSettings returns a list of user settings.
 	ListUserSettings(ctx context.Context, in *ListUserSettingsRequest, opts ...grpc.CallOption) (*ListUserSettingsResponse, error)
+	// ListMemoViews returns a user's memo views. Each view is a named, reusable
+	// CEL filter (see MemoView.filter); pass its filter string directly to the
+	// ListMemos `filter` argument.
+	ListMemoViews(ctx context.Context, in *ListMemoViewsRequest, opts ...grpc.CallOption) (*ListMemoViewsResponse, error)
+	// GetMemoView gets a memo view by name.
+	GetMemoView(ctx context.Context, in *GetMemoViewRequest, opts ...grpc.CallOption) (*MemoView, error)
+	// CreateMemoView creates a new memo view for a user.
+	CreateMemoView(ctx context.Context, in *CreateMemoViewRequest, opts ...grpc.CallOption) (*MemoView, error)
+	// UpdateMemoView updates a memo view for a user.
+	UpdateMemoView(ctx context.Context, in *UpdateMemoViewRequest, opts ...grpc.CallOption) (*MemoView, error)
+	// DeleteMemoView deletes a memo view for a user.
+	DeleteMemoView(ctx context.Context, in *DeleteMemoViewRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// ListLinkedIdentities returns a list of linked SSO identities for a user.
 	ListLinkedIdentities(ctx context.Context, in *ListLinkedIdentitiesRequest, opts ...grpc.CallOption) (*ListLinkedIdentitiesResponse, error)
 	// CreateLinkedIdentity links an SSO identity to the authenticated user.
@@ -199,6 +232,26 @@ func (c *userServiceClient) GetUserStats(ctx context.Context, in *GetUserStatsRe
 	return out, nil
 }
 
+func (c *userServiceClient) ExportMemos(ctx context.Context, in *ExportMemosRequest, opts ...grpc.CallOption) (*httpbody.HttpBody, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(httpbody.HttpBody)
+	err := c.cc.Invoke(ctx, UserService_ExportMemos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ImportMemos(ctx context.Context, in *ImportMemosRequest, opts ...grpc.CallOption) (*ImportMemosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ImportMemosResponse)
+	err := c.cc.Invoke(ctx, UserService_ImportMemos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetUserSetting(ctx context.Context, in *GetUserSettingRequest, opts ...grpc.CallOption) (*UserSetting, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UserSetting)
@@ -223,6 +276,56 @@ func (c *userServiceClient) ListUserSettings(ctx context.Context, in *ListUserSe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListUserSettingsResponse)
 	err := c.cc.Invoke(ctx, UserService_ListUserSettings_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListMemoViews(ctx context.Context, in *ListMemoViewsRequest, opts ...grpc.CallOption) (*ListMemoViewsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMemoViewsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListMemoViews_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetMemoView(ctx context.Context, in *GetMemoViewRequest, opts ...grpc.CallOption) (*MemoView, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MemoView)
+	err := c.cc.Invoke(ctx, UserService_GetMemoView_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateMemoView(ctx context.Context, in *CreateMemoViewRequest, opts ...grpc.CallOption) (*MemoView, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MemoView)
+	err := c.cc.Invoke(ctx, UserService_CreateMemoView_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdateMemoView(ctx context.Context, in *UpdateMemoViewRequest, opts ...grpc.CallOption) (*MemoView, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MemoView)
+	err := c.cc.Invoke(ctx, UserService_UpdateMemoView_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteMemoView(ctx context.Context, in *DeleteMemoViewRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_DeleteMemoView_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -400,12 +503,37 @@ type UserServiceServer interface {
 	ListAllUserStats(context.Context, *ListAllUserStatsRequest) (*ListAllUserStatsResponse, error)
 	// GetUserStats returns statistics for a specific user.
 	GetUserStats(context.Context, *GetUserStatsRequest) (*UserStats, error)
+	// ExportMemos writes every memo the user created, with comments, archived
+	// memos, and attachment files, as a Memos export file (a ZIP file, see
+	// docs/design/memos-export-format.md). Only the user may export their own
+	// memos. The body is the archive; content_type is its media type.
+	ExportMemos(context.Context, *ExportMemosRequest) (*httpbody.HttpBody, error)
+	// ImportMemos uploads a Memos export file in bounded chunks and imports it into
+	// the user's memos. The first call carries the spec and returns an
+	// upload_id; later calls carry that upload_id. A finishing call with
+	// validate_only returns the plan and keeps the archive staged; a finishing
+	// call without it imports and returns the report. Uploads are bound to the
+	// authenticated user, expire after 30 minutes of inactivity, and do not
+	// survive a server restart.
+	ImportMemos(context.Context, *ImportMemosRequest) (*ImportMemosResponse, error)
 	// GetUserSetting returns the user setting.
 	GetUserSetting(context.Context, *GetUserSettingRequest) (*UserSetting, error)
 	// UpdateUserSetting updates the user setting.
 	UpdateUserSetting(context.Context, *UpdateUserSettingRequest) (*UserSetting, error)
 	// ListUserSettings returns a list of user settings.
 	ListUserSettings(context.Context, *ListUserSettingsRequest) (*ListUserSettingsResponse, error)
+	// ListMemoViews returns a user's memo views. Each view is a named, reusable
+	// CEL filter (see MemoView.filter); pass its filter string directly to the
+	// ListMemos `filter` argument.
+	ListMemoViews(context.Context, *ListMemoViewsRequest) (*ListMemoViewsResponse, error)
+	// GetMemoView gets a memo view by name.
+	GetMemoView(context.Context, *GetMemoViewRequest) (*MemoView, error)
+	// CreateMemoView creates a new memo view for a user.
+	CreateMemoView(context.Context, *CreateMemoViewRequest) (*MemoView, error)
+	// UpdateMemoView updates a memo view for a user.
+	UpdateMemoView(context.Context, *UpdateMemoViewRequest) (*MemoView, error)
+	// DeleteMemoView deletes a memo view for a user.
+	DeleteMemoView(context.Context, *DeleteMemoViewRequest) (*emptypb.Empty, error)
 	// ListLinkedIdentities returns a list of linked SSO identities for a user.
 	ListLinkedIdentities(context.Context, *ListLinkedIdentitiesRequest) (*ListLinkedIdentitiesResponse, error)
 	// CreateLinkedIdentity links an SSO identity to the authenticated user.
@@ -474,6 +602,12 @@ func (UnimplementedUserServiceServer) ListAllUserStats(context.Context, *ListAll
 func (UnimplementedUserServiceServer) GetUserStats(context.Context, *GetUserStatsRequest) (*UserStats, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserStats not implemented")
 }
+func (UnimplementedUserServiceServer) ExportMemos(context.Context, *ExportMemosRequest) (*httpbody.HttpBody, error) {
+	return nil, status.Error(codes.Unimplemented, "method ExportMemos not implemented")
+}
+func (UnimplementedUserServiceServer) ImportMemos(context.Context, *ImportMemosRequest) (*ImportMemosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ImportMemos not implemented")
+}
 func (UnimplementedUserServiceServer) GetUserSetting(context.Context, *GetUserSettingRequest) (*UserSetting, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetUserSetting not implemented")
 }
@@ -482,6 +616,21 @@ func (UnimplementedUserServiceServer) UpdateUserSetting(context.Context, *Update
 }
 func (UnimplementedUserServiceServer) ListUserSettings(context.Context, *ListUserSettingsRequest) (*ListUserSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListUserSettings not implemented")
+}
+func (UnimplementedUserServiceServer) ListMemoViews(context.Context, *ListMemoViewsRequest) (*ListMemoViewsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMemoViews not implemented")
+}
+func (UnimplementedUserServiceServer) GetMemoView(context.Context, *GetMemoViewRequest) (*MemoView, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMemoView not implemented")
+}
+func (UnimplementedUserServiceServer) CreateMemoView(context.Context, *CreateMemoViewRequest) (*MemoView, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateMemoView not implemented")
+}
+func (UnimplementedUserServiceServer) UpdateMemoView(context.Context, *UpdateMemoViewRequest) (*MemoView, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMemoView not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteMemoView(context.Context, *DeleteMemoViewRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteMemoView not implemented")
 }
 func (UnimplementedUserServiceServer) ListLinkedIdentities(context.Context, *ListLinkedIdentitiesRequest) (*ListLinkedIdentitiesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListLinkedIdentities not implemented")
@@ -693,6 +842,42 @@ func _UserService_GetUserStats_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ExportMemos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExportMemosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ExportMemos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ExportMemos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ExportMemos(ctx, req.(*ExportMemosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ImportMemos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ImportMemosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ImportMemos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ImportMemos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ImportMemos(ctx, req.(*ImportMemosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetUserSetting_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetUserSettingRequest)
 	if err := dec(in); err != nil {
@@ -743,6 +928,96 @@ func _UserService_ListUserSettings_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).ListUserSettings(ctx, req.(*ListUserSettingsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListMemoViews_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMemoViewsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListMemoViews(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListMemoViews_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListMemoViews(ctx, req.(*ListMemoViewsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetMemoView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMemoViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetMemoView(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetMemoView_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetMemoView(ctx, req.(*GetMemoViewRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateMemoView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMemoViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateMemoView(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateMemoView_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateMemoView(ctx, req.(*CreateMemoViewRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdateMemoView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMemoViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateMemoView(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateMemoView_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateMemoView(ctx, req.(*UpdateMemoViewRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteMemoView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMemoViewRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteMemoView(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteMemoView_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteMemoView(ctx, req.(*DeleteMemoViewRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1057,6 +1332,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_GetUserStats_Handler,
 		},
 		{
+			MethodName: "ExportMemos",
+			Handler:    _UserService_ExportMemos_Handler,
+		},
+		{
+			MethodName: "ImportMemos",
+			Handler:    _UserService_ImportMemos_Handler,
+		},
+		{
 			MethodName: "GetUserSetting",
 			Handler:    _UserService_GetUserSetting_Handler,
 		},
@@ -1067,6 +1350,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListUserSettings",
 			Handler:    _UserService_ListUserSettings_Handler,
+		},
+		{
+			MethodName: "ListMemoViews",
+			Handler:    _UserService_ListMemoViews_Handler,
+		},
+		{
+			MethodName: "GetMemoView",
+			Handler:    _UserService_GetMemoView_Handler,
+		},
+		{
+			MethodName: "CreateMemoView",
+			Handler:    _UserService_CreateMemoView_Handler,
+		},
+		{
+			MethodName: "UpdateMemoView",
+			Handler:    _UserService_UpdateMemoView_Handler,
+		},
+		{
+			MethodName: "DeleteMemoView",
+			Handler:    _UserService_DeleteMemoView_Handler,
 		},
 		{
 			MethodName: "ListLinkedIdentities",

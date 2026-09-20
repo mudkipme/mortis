@@ -1,10 +1,19 @@
-# For details on buf.yaml configuration, visit https://buf.build/docs/configuration/v2/buf-yaml
 version: v2
-lint:
-  use:
-    - STANDARD
 deps:
   - buf.build/googleapis/googleapis
+lint:
+  use:
+    - BASIC
+  except:
+    - ENUM_VALUE_PREFIX
+    - FIELD_NOT_REQUIRED
+    - PACKAGE_DIRECTORY_MATCH
+    - PACKAGE_NO_IMPORT_CYCLE
+    - PACKAGE_VERSION_SUFFIX
+  disallow_comment_ignores: true
 breaking:
   use:
     - FILE
+  except:
+    - EXTENSION_NO_DELETE
+    - FIELD_SAME_DEFAULT

@@ -80,7 +80,10 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 	}
 	if params.RelationList != nil {
 		for _, relation := range *params.RelationList {
-			if relation.RelatedMemoId == nil {
+			if relation.Type != nil && *relation.Type == api.MemoRelationComment {
+				return echo.NewHTTPError(http.StatusBadRequest, "comments are not supported by Mortis")
+			}
+			if relation.RelatedMemoId == nil || relation.Type == nil {
 				continue
 			}
 			relatedName, err := s.searchMemoId(ctx, *relation.RelatedMemoId)
@@ -88,19 +91,15 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 				slog.ErrorContext(ctx.Request().Context(), "failed to search related memo id", "error", err)
 				return err
 			}
-			var relationType v1pb.MemoRelation_Type
 			switch *relation.Type {
-			case api.MemoRelationComment:
-				relationType = v1pb.MemoRelation_COMMENT
 			case api.MemoRelationReference:
-				relationType = v1pb.MemoRelation_REFERENCE
+				req.Memo.Relations = append(req.Memo.Relations, &v1pb.MemoRelation{
+					RelatedMemo: &v1pb.MemoRelation_Memo{
+						Name: relatedName,
+					},
+					Type: v1pb.MemoRelation_REFERENCE,
+				})
 			}
-			req.Memo.Relations = append(req.Memo.Relations, &v1pb.MemoRelation{
-				RelatedMemo: &v1pb.MemoRelation_Memo{
-					Name: relatedName,
-				},
-				Type: relationType,
-			})
 		}
 	}
 
@@ -245,7 +244,17 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 
 	var relations []*api.MemoRelation
 	for _, relation := range resp.Relations {
-		relatedMemoID := int(hashToInt53(strings.TrimPrefix(relation.RelatedMemo.GetName(), "memos/")))
+		// Memos 0.21 returned only relations owned by the requested memo.
+		// Memos 0.31 also includes incoming relations in the memo response.
+		if relation.GetMemo().GetName() != name {
+			continue
+		}
+		relatedName := relation.GetRelatedMemo().GetName()
+		if relatedName == "" {
+			continue
+		}
+		relatedMemoID := int(hashToInt53(strings.TrimPrefix(relatedName, "memos/")))
+		s.memoIdToName.Store(relatedMemoID, relatedName)
 		var relationType api.MemoRelationType
 		switch relation.Type {
 		case v1pb.MemoRelation_COMMENT:
@@ -701,7 +710,13 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 	if params.RelationList != nil {
 		req.Memo.Relations = []*v1pb.MemoRelation{}
 		for _, relation := range *params.RelationList {
-			if relation.RelatedMemoId == nil {
+			if relation.Type != nil && *relation.Type == api.MemoRelationComment {
+				return echo.NewHTTPError(http.StatusBadRequest, "comments are not supported by Mortis")
+			}
+			if relation.RelatedMemoId == nil || relation.Type == nil {
+				continue
+			}
+			if *relation.Type != api.MemoRelationReference {
 				continue
 			}
 			relatedName, err := s.searchMemoId(ctx, *relation.RelatedMemoId)
@@ -709,18 +724,11 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 				slog.ErrorContext(ctx.Request().Context(), "failed to search related memo id", "error", err)
 				return err
 			}
-			var relationType v1pb.MemoRelation_Type
-			switch *relation.Type {
-			case api.MemoRelationComment:
-				relationType = v1pb.MemoRelation_COMMENT
-			case api.MemoRelationReference:
-				relationType = v1pb.MemoRelation_REFERENCE
-			}
 			req.Memo.Relations = append(req.Memo.Relations, &v1pb.MemoRelation{
 				RelatedMemo: &v1pb.MemoRelation_Memo{
 					Name: relatedName,
 				},
-				Type: relationType,
+				Type: v1pb.MemoRelation_REFERENCE,
 			})
 		}
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "relations")
@@ -971,6 +979,9 @@ func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
 		visibility = api.Public
 	case v1pb.Visibility_PROTECTED:
 		visibility = api.Protected
+	case v1pb.Visibility_SPACE:
+		// Memos 0.21 has no space-scoped visibility; PRIVATE is the safest legacy representation.
+		visibility = api.Private
 	}
 
 	resources := []api.Resource{}
