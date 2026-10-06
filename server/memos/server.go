@@ -706,6 +706,9 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 	if params.UpdatedTs != nil && *params.UpdatedTs != 0 {
 		req.Memo.UpdateTime = timestamppb.New(time.Unix(int64(*params.UpdatedTs), 0))
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "update_time")
+	} else if params.Content != nil {
+		// Let Memos use its server clock for content edits without an explicit timestamp.
+		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "update_time")
 	}
 	if params.RelationList != nil {
 		req.Memo.Relations = []*v1pb.MemoRelation{}
