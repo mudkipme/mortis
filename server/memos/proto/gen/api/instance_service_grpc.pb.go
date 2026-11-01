@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: api/v1/instance_service.proto
+// source: api/instance_service.proto
 
-package v1
+package api
 
 import (
 	context "context"
@@ -20,30 +20,39 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	InstanceService_GetInstanceProfile_FullMethodName       = "/memos.api.v1.InstanceService/GetInstanceProfile"
-	InstanceService_GetInstanceSetting_FullMethodName       = "/memos.api.v1.InstanceService/GetInstanceSetting"
-	InstanceService_BatchGetInstanceSettings_FullMethodName = "/memos.api.v1.InstanceService/BatchGetInstanceSettings"
-	InstanceService_UpdateInstanceSetting_FullMethodName    = "/memos.api.v1.InstanceService/UpdateInstanceSetting"
-	InstanceService_TestInstanceEmailSetting_FullMethodName = "/memos.api.v1.InstanceService/TestInstanceEmailSetting"
-	InstanceService_GetInstanceStats_FullMethodName         = "/memos.api.v1.InstanceService/GetInstanceStats"
+	InstanceService_GetInstanceProfile_FullMethodName       = "/memos.api.InstanceService/GetInstanceProfile"
+	InstanceService_GetInstanceSetting_FullMethodName       = "/memos.api.InstanceService/GetInstanceSetting"
+	InstanceService_BatchGetInstanceSettings_FullMethodName = "/memos.api.InstanceService/BatchGetInstanceSettings"
+	InstanceService_UpdateInstanceSetting_FullMethodName    = "/memos.api.InstanceService/UpdateInstanceSetting"
+	InstanceService_TestInstanceEmailSetting_FullMethodName = "/memos.api.InstanceService/TestInstanceEmailSetting"
+	InstanceService_GetInstanceStats_FullMethodName         = "/memos.api.InstanceService/GetInstanceStats"
+	InstanceService_GetConfigurationStatus_FullMethodName   = "/memos.api.InstanceService/GetConfigurationStatus"
 )
 
 // InstanceServiceClient is the client API for InstanceService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// InstanceService exposes the instance profile, instance-wide settings and usage statistics.
 type InstanceServiceClient interface {
-	// Gets the instance profile.
+	// GetInstanceProfile gets the instance profile. Available without authentication, including on a private instance.
 	GetInstanceProfile(ctx context.Context, in *GetInstanceProfileRequest, opts ...grpc.CallOption) (*InstanceProfile, error)
-	// Gets an instance setting.
+	// GetInstanceSetting gets an instance setting. Available without authentication, except STORAGE and NOTIFICATION,
+	// which are admin only, and AI, which requires a signed-in user and hides transcription defaults from non-admins.
 	GetInstanceSetting(ctx context.Context, in *GetInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
-	// Batch gets instance settings.
+	// BatchGetInstanceSettings gets up to 100 instance settings in request order, with the same access rules as
+	// GetInstanceSetting. The call fails if any setting cannot be returned.
 	BatchGetInstanceSettings(ctx context.Context, in *BatchGetInstanceSettingsRequest, opts ...grpc.CallOption) (*BatchGetInstanceSettingsResponse, error)
-	// Updates an instance setting.
+	// UpdateInstanceSetting replaces an instance setting. Admin only. Fields declarative configuration manages cannot be
+	// changed. Empty write-only credentials keep the stored values.
 	UpdateInstanceSetting(ctx context.Context, in *UpdateInstanceSettingRequest, opts ...grpc.CallOption) (*InstanceSetting, error)
-	// Tests notification email delivery with the provided or stored SMTP settings.
+	// TestInstanceEmailSetting sends a test email with the provided or stored SMTP settings. Admin only.
 	TestInstanceEmailSetting(ctx context.Context, in *TestInstanceEmailSettingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// GetInstanceStats returns resource usage statistics for the instance. Admin only.
+	// GetInstanceStats gets resource usage statistics for the instance. Admin only. Results are cached for 60 seconds.
 	GetInstanceStats(ctx context.Context, in *GetInstanceStatsRequest, opts ...grpc.CallOption) (*InstanceStats, error)
+	// GetConfigurationStatus gets what declarative configuration manages: the managed resources and the last apply.
+	// Admin only. It carries resource names and field paths, never a configured value.
+	GetConfigurationStatus(ctx context.Context, in *GetConfigurationStatusRequest, opts ...grpc.CallOption) (*ConfigurationStatus, error)
 }
 
 type instanceServiceClient struct {
@@ -114,22 +123,40 @@ func (c *instanceServiceClient) GetInstanceStats(ctx context.Context, in *GetIns
 	return out, nil
 }
 
+func (c *instanceServiceClient) GetConfigurationStatus(ctx context.Context, in *GetConfigurationStatusRequest, opts ...grpc.CallOption) (*ConfigurationStatus, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConfigurationStatus)
+	err := c.cc.Invoke(ctx, InstanceService_GetConfigurationStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InstanceServiceServer is the server API for InstanceService service.
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
+//
+// InstanceService exposes the instance profile, instance-wide settings and usage statistics.
 type InstanceServiceServer interface {
-	// Gets the instance profile.
+	// GetInstanceProfile gets the instance profile. Available without authentication, including on a private instance.
 	GetInstanceProfile(context.Context, *GetInstanceProfileRequest) (*InstanceProfile, error)
-	// Gets an instance setting.
+	// GetInstanceSetting gets an instance setting. Available without authentication, except STORAGE and NOTIFICATION,
+	// which are admin only, and AI, which requires a signed-in user and hides transcription defaults from non-admins.
 	GetInstanceSetting(context.Context, *GetInstanceSettingRequest) (*InstanceSetting, error)
-	// Batch gets instance settings.
+	// BatchGetInstanceSettings gets up to 100 instance settings in request order, with the same access rules as
+	// GetInstanceSetting. The call fails if any setting cannot be returned.
 	BatchGetInstanceSettings(context.Context, *BatchGetInstanceSettingsRequest) (*BatchGetInstanceSettingsResponse, error)
-	// Updates an instance setting.
+	// UpdateInstanceSetting replaces an instance setting. Admin only. Fields declarative configuration manages cannot be
+	// changed. Empty write-only credentials keep the stored values.
 	UpdateInstanceSetting(context.Context, *UpdateInstanceSettingRequest) (*InstanceSetting, error)
-	// Tests notification email delivery with the provided or stored SMTP settings.
+	// TestInstanceEmailSetting sends a test email with the provided or stored SMTP settings. Admin only.
 	TestInstanceEmailSetting(context.Context, *TestInstanceEmailSettingRequest) (*emptypb.Empty, error)
-	// GetInstanceStats returns resource usage statistics for the instance. Admin only.
+	// GetInstanceStats gets resource usage statistics for the instance. Admin only. Results are cached for 60 seconds.
 	GetInstanceStats(context.Context, *GetInstanceStatsRequest) (*InstanceStats, error)
+	// GetConfigurationStatus gets what declarative configuration manages: the managed resources and the last apply.
+	// Admin only. It carries resource names and field paths, never a configured value.
+	GetConfigurationStatus(context.Context, *GetConfigurationStatusRequest) (*ConfigurationStatus, error)
 	mustEmbedUnimplementedInstanceServiceServer()
 }
 
@@ -157,6 +184,9 @@ func (UnimplementedInstanceServiceServer) TestInstanceEmailSetting(context.Conte
 }
 func (UnimplementedInstanceServiceServer) GetInstanceStats(context.Context, *GetInstanceStatsRequest) (*InstanceStats, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetInstanceStats not implemented")
+}
+func (UnimplementedInstanceServiceServer) GetConfigurationStatus(context.Context, *GetConfigurationStatusRequest) (*ConfigurationStatus, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetConfigurationStatus not implemented")
 }
 func (UnimplementedInstanceServiceServer) mustEmbedUnimplementedInstanceServiceServer() {}
 func (UnimplementedInstanceServiceServer) testEmbeddedByValue()                         {}
@@ -287,11 +317,29 @@ func _InstanceService_GetInstanceStats_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InstanceService_GetConfigurationStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetConfigurationStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).GetConfigurationStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_GetConfigurationStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).GetConfigurationStatus(ctx, req.(*GetConfigurationStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // InstanceService_ServiceDesc is the grpc.ServiceDesc for InstanceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var InstanceService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "memos.api.v1.InstanceService",
+	ServiceName: "memos.api.InstanceService",
 	HandlerType: (*InstanceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -318,7 +366,11 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetInstanceStats",
 			Handler:    _InstanceService_GetInstanceStats_Handler,
 		},
+		{
+			MethodName: "GetConfigurationStatus",
+			Handler:    _InstanceService_GetConfigurationStatus_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/instance_service.proto",
+	Metadata: "api/instance_service.proto",
 }

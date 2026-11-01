@@ -26,7 +26,7 @@ func main() {
 	e.GET("/o/r/:uid", server.StreamResource)
 	e.GET("/o/r/:uid/:filename", server.StreamResource)
 
-	// Default handler - proxy to gRPC address
+	// Default handler - proxy to Memos
 	e.Any("/*", echo.WrapHandler(httputil.NewSingleHostReverseProxy(&url.URL{
 		Scheme: "http",
 		Host:   *serverAddr,

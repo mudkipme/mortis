@@ -2,7 +2,7 @@
 
 A self-hosted server that provides [Memos 0.21.0 OpenAPI](https://mudkipme.github.io/mortis/) support for compatible apps like Moe Memos.
 
-Currently, it is implemented to use the latest Memos server as a backend.
+It uses Memos 26.10.0 as a backend, translating the legacy API to the current Memos HTTP API.
 
 ## Usage
 
@@ -16,11 +16,11 @@ Available flags:
 
 * `-addr string`: Listen address (default "0.0.0.0")
 * `-port int`: Listen port (default 5231)
-* `-grpc-addr string`: gRPC server address of Memos server (default "127.0.0.1:5230")
+* `-grpc-addr string`: HTTP server address of Memos server (default "127.0.0.1:5230")
 
-The `-grpc-addr` flag should point directly to your Memos instance. Reverse proxy is not currently supported since Mortis connects to Memos using the gRPC protocol, and gRPC-Web protocol is not yet implemented. However, Mortis itself can be placed behind a reverse proxy.
+The `-grpc-addr` flag keeps its original name but connects over HTTP. Point it to your Memos instance (host and port, such as `memos:5230`). Mortis itself can also be placed behind a reverse proxy.
 
-You can use the same domain for both Memos and Mortis by proxying paths with the `/api/v1/` prefix to Mortis.
+You can use the same domain for both Memos and Mortis by proxying `/api/v1/` and `/o/r/` to Mortis. Memos uses `/api/` for its current API.
 
 ### Nginx Configuration Example
 
@@ -76,7 +76,7 @@ Here is an example `docker-compose.yml` file to run both Memos and Mortis:
 ```yaml
 services:
     memos:
-        image: neosmemo/memos:0.25.3
+        image: neosmemo/memos:26.10.0
         container_name: memos
         volumes:
             - ./data:/var/opt/memos
@@ -84,7 +84,7 @@ services:
             - "5230:5230"
 
     mortis:
-        image: ghcr.io/mudkipme/mortis:0.25.3
+        image: ghcr.io/mudkipme/mortis:26.10.0
         container_name: mortis
         ports:
             - "5231:5231"

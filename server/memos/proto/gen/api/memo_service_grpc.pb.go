@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: api/v1/memo_service.proto
+// source: api/memo_service.proto
 
-package v1
+package api
 
 import (
 	context "context"
@@ -20,82 +20,100 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MemoService_CreateMemo_FullMethodName           = "/memos.api.v1.MemoService/CreateMemo"
-	MemoService_ListMemos_FullMethodName            = "/memos.api.v1.MemoService/ListMemos"
-	MemoService_GetMemo_FullMethodName              = "/memos.api.v1.MemoService/GetMemo"
-	MemoService_UpdateMemo_FullMethodName           = "/memos.api.v1.MemoService/UpdateMemo"
-	MemoService_DeleteMemo_FullMethodName           = "/memos.api.v1.MemoService/DeleteMemo"
-	MemoService_SetMemoAttachments_FullMethodName   = "/memos.api.v1.MemoService/SetMemoAttachments"
-	MemoService_ListMemoAttachments_FullMethodName  = "/memos.api.v1.MemoService/ListMemoAttachments"
-	MemoService_SetMemoRelations_FullMethodName     = "/memos.api.v1.MemoService/SetMemoRelations"
-	MemoService_ListMemoRelations_FullMethodName    = "/memos.api.v1.MemoService/ListMemoRelations"
-	MemoService_CreateMemoComment_FullMethodName    = "/memos.api.v1.MemoService/CreateMemoComment"
-	MemoService_ListMemoComments_FullMethodName     = "/memos.api.v1.MemoService/ListMemoComments"
-	MemoService_ListMemoReactions_FullMethodName    = "/memos.api.v1.MemoService/ListMemoReactions"
-	MemoService_UpsertMemoReaction_FullMethodName   = "/memos.api.v1.MemoService/UpsertMemoReaction"
-	MemoService_DeleteMemoReaction_FullMethodName   = "/memos.api.v1.MemoService/DeleteMemoReaction"
-	MemoService_CreateMemoShare_FullMethodName      = "/memos.api.v1.MemoService/CreateMemoShare"
-	MemoService_ListMemoShares_FullMethodName       = "/memos.api.v1.MemoService/ListMemoShares"
-	MemoService_DeleteMemoShare_FullMethodName      = "/memos.api.v1.MemoService/DeleteMemoShare"
-	MemoService_GetSharedMemo_FullMethodName        = "/memos.api.v1.MemoService/GetSharedMemo"
-	MemoService_GetLinkMetadata_FullMethodName      = "/memos.api.v1.MemoService/GetLinkMetadata"
-	MemoService_BatchGetLinkMetadata_FullMethodName = "/memos.api.v1.MemoService/BatchGetLinkMetadata"
+	MemoService_ListMemos_FullMethodName            = "/memos.api.MemoService/ListMemos"
+	MemoService_GetMemo_FullMethodName              = "/memos.api.MemoService/GetMemo"
+	MemoService_CreateMemo_FullMethodName           = "/memos.api.MemoService/CreateMemo"
+	MemoService_UpdateMemo_FullMethodName           = "/memos.api.MemoService/UpdateMemo"
+	MemoService_DeleteMemo_FullMethodName           = "/memos.api.MemoService/DeleteMemo"
+	MemoService_ListMemoAttachments_FullMethodName  = "/memos.api.MemoService/ListMemoAttachments"
+	MemoService_SetMemoAttachments_FullMethodName   = "/memos.api.MemoService/SetMemoAttachments"
+	MemoService_ListMemoRelations_FullMethodName    = "/memos.api.MemoService/ListMemoRelations"
+	MemoService_SetMemoRelations_FullMethodName     = "/memos.api.MemoService/SetMemoRelations"
+	MemoService_ListMemoComments_FullMethodName     = "/memos.api.MemoService/ListMemoComments"
+	MemoService_CreateMemoComment_FullMethodName    = "/memos.api.MemoService/CreateMemoComment"
+	MemoService_ListMemoReactions_FullMethodName    = "/memos.api.MemoService/ListMemoReactions"
+	MemoService_DeleteMemoReaction_FullMethodName   = "/memos.api.MemoService/DeleteMemoReaction"
+	MemoService_UpsertMemoReaction_FullMethodName   = "/memos.api.MemoService/UpsertMemoReaction"
+	MemoService_ListMemoShares_FullMethodName       = "/memos.api.MemoService/ListMemoShares"
+	MemoService_CreateMemoShare_FullMethodName      = "/memos.api.MemoService/CreateMemoShare"
+	MemoService_DeleteMemoShare_FullMethodName      = "/memos.api.MemoService/DeleteMemoShare"
+	MemoService_GetSharedMemo_FullMethodName        = "/memos.api.MemoService/GetSharedMemo"
+	MemoService_GetLinkMetadata_FullMethodName      = "/memos.api.MemoService/GetLinkMetadata"
+	MemoService_BatchGetLinkMetadata_FullMethodName = "/memos.api.MemoService/BatchGetLinkMetadata"
 )
 
 // MemoServiceClient is the client API for MemoService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// MemoService manages memos and their attachments, relations, comments,
+// reactions, and share links.
 type MemoServiceClient interface {
-	// CreateMemo creates a memo. The request body is a Memo; set its content
-	// (Markdown) and visibility (PRIVATE | PROTECTED | PUBLIC | SPACE,
-	// default PRIVATE).
-	// The memo is owned by the authenticated user; requires authentication.
-	CreateMemo(ctx context.Context, in *CreateMemoRequest, opts ...grpc.CallOption) (*Memo, error)
-	// ListMemos lists readable non-comment memos with pagination and filter.
+	// ListMemos lists the memos the caller can read, excluding comments.
+	// Anonymous callers can list only when the instance allows public access.
 	ListMemos(ctx context.Context, in *ListMemosRequest, opts ...grpc.CallOption) (*ListMemosResponse, error)
-	// GetMemo gets a memo.
+	// GetMemo gets a memo. Requires read access to the memo.
 	GetMemo(ctx context.Context, in *GetMemoRequest, opts ...grpc.CallOption) (*Memo, error)
-	// UpdateMemo updates a memo.
+	// CreateMemo creates a memo owned by the authenticated user. The request body
+	// is a Memo; set its Markdown content and visibility (defaults to PRIVATE).
+	// Requires authentication.
+	CreateMemo(ctx context.Context, in *CreateMemoRequest, opts ...grpc.CallOption) (*Memo, error)
+	// UpdateMemo updates the memo fields listed in update_mask. Requires the memo
+	// creator or an instance administrator.
 	UpdateMemo(ctx context.Context, in *UpdateMemoRequest, opts ...grpc.CallOption) (*Memo, error)
-	// DeleteMemo deletes only the named memo and its owned resources. It removes
-	// incident relations but never deletes another memo.
+	// DeleteMemo deletes the named memo and its comment subtree, including nested
+	// replies and their owned resources. It removes incident relations for all
+	// deleted memos. Requires the memo creator or an instance administrator.
 	DeleteMemo(ctx context.Context, in *DeleteMemoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// ListMemoAttachments lists the attachments of a memo. Requires read access
+	// to the memo.
+	ListMemoAttachments(ctx context.Context, in *ListMemoAttachmentsRequest, opts ...grpc.CallOption) (*ListMemoAttachmentsResponse, error)
 	// SetMemoAttachments replaces the full set of attachments on a memo with the
 	// provided list (not an append). Pass the complete desired set; an empty list
-	// clears all attachments. Idempotent.
+	// clears all attachments. Idempotent. Requires the memo creator or an
+	// instance administrator.
 	SetMemoAttachments(ctx context.Context, in *SetMemoAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// ListMemoAttachments lists attachments for a memo.
-	ListMemoAttachments(ctx context.Context, in *ListMemoAttachmentsRequest, opts ...grpc.CallOption) (*ListMemoAttachmentsResponse, error)
+	// ListMemoRelations lists the relations of a memo in both directions.
+	// Requires read access to the memo.
+	ListMemoRelations(ctx context.Context, in *ListMemoRelationsRequest, opts ...grpc.CallOption) (*ListMemoRelationsResponse, error)
 	// SetMemoRelations replaces the full set of mutable REFERENCE relations on a
 	// memo. COMMENT relations are immutable creation context and are rejected by
 	// this RPC. An empty list clears references without changing COMMENT.
+	// Requires the memo creator or an instance administrator.
 	SetMemoRelations(ctx context.Context, in *SetMemoRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// ListMemoRelations lists relations for a memo.
-	ListMemoRelations(ctx context.Context, in *ListMemoRelationsRequest, opts ...grpc.CallOption) (*ListMemoRelationsResponse, error)
+	// ListMemoComments lists the active comments on a memo that the caller can
+	// read. Requires read access to the memo.
+	ListMemoComments(ctx context.Context, in *ListMemoCommentsRequest, opts ...grpc.CallOption) (*ListMemoCommentsResponse, error)
 	// CreateMemoComment atomically creates an independent memo plus one immutable
 	// COMMENT context relation to the named memo. The new memo keeps its own
-	// placement, visibility, authorship, and lifecycle.
+	// placement, visibility, authorship, and lifecycle. The named memo must be
+	// readable by the caller and not archived.
 	CreateMemoComment(ctx context.Context, in *CreateMemoCommentRequest, opts ...grpc.CallOption) (*Memo, error)
-	// ListMemoComments lists comments for a memo.
-	ListMemoComments(ctx context.Context, in *ListMemoCommentsRequest, opts ...grpc.CallOption) (*ListMemoCommentsResponse, error)
-	// ListMemoReactions lists reactions for a memo.
+	// ListMemoReactions lists the reactions on a memo. Requires read access to
+	// the memo.
 	ListMemoReactions(ctx context.Context, in *ListMemoReactionsRequest, opts ...grpc.CallOption) (*ListMemoReactionsResponse, error)
-	// UpsertMemoReaction adds or updates the authenticated user's reaction on a memo.
-	UpsertMemoReaction(ctx context.Context, in *UpsertMemoReactionRequest, opts ...grpc.CallOption) (*Reaction, error)
-	// DeleteMemoReaction deletes a reaction for a memo.
+	// DeleteMemoReaction deletes a reaction. Requires the reaction creator or an
+	// instance administrator.
 	DeleteMemoReaction(ctx context.Context, in *DeleteMemoReactionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// CreateMemoShare creates a share link for a memo. Requires the memo creator or an instance administrator.
-	CreateMemoShare(ctx context.Context, in *CreateMemoShareRequest, opts ...grpc.CallOption) (*MemoShare, error)
-	// ListMemoShares lists all share links for a memo. Requires the memo creator or an instance administrator.
+	// UpsertMemoReaction adds or updates the authenticated user's reaction on a
+	// memo. Requires read access to the memo.
+	UpsertMemoReaction(ctx context.Context, in *UpsertMemoReactionRequest, opts ...grpc.CallOption) (*Reaction, error)
+	// ListMemoShares lists all share links for a memo. Requires the memo creator
+	// or an instance administrator.
 	ListMemoShares(ctx context.Context, in *ListMemoSharesRequest, opts ...grpc.CallOption) (*ListMemoSharesResponse, error)
-	// DeleteMemoShare revokes a share link. Requires the memo creator or an instance administrator.
+	// CreateMemoShare creates a share link for a memo. Requires the memo creator
+	// or an instance administrator. Only active memos without SPACE visibility
+	// can be shared.
+	CreateMemoShare(ctx context.Context, in *CreateMemoShareRequest, opts ...grpc.CallOption) (*MemoShare, error)
+	// DeleteMemoShare revokes a share link. Requires the memo creator or an
+	// instance administrator.
 	DeleteMemoShare(ctx context.Context, in *DeleteMemoShareRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// GetSharedMemo resolves a share token to its memo. No authentication required.
-	// Returns NOT_FOUND if the token is invalid or expired.
+	// GetSharedMemo resolves a share token to its memo. No authentication is
+	// required. Returns NOT_FOUND if the token is invalid or expired.
 	GetSharedMemo(ctx context.Context, in *GetSharedMemoRequest, opts ...grpc.CallOption) (*Memo, error)
-	// GetLinkMetadata gets metadata for a link.
+	// GetLinkMetadata fetches the title, description, and image of a link.
 	GetLinkMetadata(ctx context.Context, in *GetLinkMetadataRequest, opts ...grpc.CallOption) (*LinkMetadata, error)
-	// BatchGetLinkMetadata gets metadata for links.
+	// BatchGetLinkMetadata fetches the metadata of up to 10 links.
 	BatchGetLinkMetadata(ctx context.Context, in *BatchGetLinkMetadataRequest, opts ...grpc.CallOption) (*BatchGetLinkMetadataResponse, error)
 }
 
@@ -105,16 +123,6 @@ type memoServiceClient struct {
 
 func NewMemoServiceClient(cc grpc.ClientConnInterface) MemoServiceClient {
 	return &memoServiceClient{cc}
-}
-
-func (c *memoServiceClient) CreateMemo(ctx context.Context, in *CreateMemoRequest, opts ...grpc.CallOption) (*Memo, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Memo)
-	err := c.cc.Invoke(ctx, MemoService_CreateMemo_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *memoServiceClient) ListMemos(ctx context.Context, in *ListMemosRequest, opts ...grpc.CallOption) (*ListMemosResponse, error) {
@@ -131,6 +139,16 @@ func (c *memoServiceClient) GetMemo(ctx context.Context, in *GetMemoRequest, opt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Memo)
 	err := c.cc.Invoke(ctx, MemoService_GetMemo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *memoServiceClient) CreateMemo(ctx context.Context, in *CreateMemoRequest, opts ...grpc.CallOption) (*Memo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Memo)
+	err := c.cc.Invoke(ctx, MemoService_CreateMemo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -157,16 +175,6 @@ func (c *memoServiceClient) DeleteMemo(ctx context.Context, in *DeleteMemoReques
 	return out, nil
 }
 
-func (c *memoServiceClient) SetMemoAttachments(ctx context.Context, in *SetMemoAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, MemoService_SetMemoAttachments_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *memoServiceClient) ListMemoAttachments(ctx context.Context, in *ListMemoAttachmentsRequest, opts ...grpc.CallOption) (*ListMemoAttachmentsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMemoAttachmentsResponse)
@@ -177,10 +185,10 @@ func (c *memoServiceClient) ListMemoAttachments(ctx context.Context, in *ListMem
 	return out, nil
 }
 
-func (c *memoServiceClient) SetMemoRelations(ctx context.Context, in *SetMemoRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *memoServiceClient) SetMemoAttachments(ctx context.Context, in *SetMemoAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, MemoService_SetMemoRelations_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, MemoService_SetMemoAttachments_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +205,10 @@ func (c *memoServiceClient) ListMemoRelations(ctx context.Context, in *ListMemoR
 	return out, nil
 }
 
-func (c *memoServiceClient) CreateMemoComment(ctx context.Context, in *CreateMemoCommentRequest, opts ...grpc.CallOption) (*Memo, error) {
+func (c *memoServiceClient) SetMemoRelations(ctx context.Context, in *SetMemoRelationsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Memo)
-	err := c.cc.Invoke(ctx, MemoService_CreateMemoComment_FullMethodName, in, out, cOpts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MemoService_SetMemoRelations_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -217,20 +225,20 @@ func (c *memoServiceClient) ListMemoComments(ctx context.Context, in *ListMemoCo
 	return out, nil
 }
 
-func (c *memoServiceClient) ListMemoReactions(ctx context.Context, in *ListMemoReactionsRequest, opts ...grpc.CallOption) (*ListMemoReactionsResponse, error) {
+func (c *memoServiceClient) CreateMemoComment(ctx context.Context, in *CreateMemoCommentRequest, opts ...grpc.CallOption) (*Memo, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListMemoReactionsResponse)
-	err := c.cc.Invoke(ctx, MemoService_ListMemoReactions_FullMethodName, in, out, cOpts...)
+	out := new(Memo)
+	err := c.cc.Invoke(ctx, MemoService_CreateMemoComment_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *memoServiceClient) UpsertMemoReaction(ctx context.Context, in *UpsertMemoReactionRequest, opts ...grpc.CallOption) (*Reaction, error) {
+func (c *memoServiceClient) ListMemoReactions(ctx context.Context, in *ListMemoReactionsRequest, opts ...grpc.CallOption) (*ListMemoReactionsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Reaction)
-	err := c.cc.Invoke(ctx, MemoService_UpsertMemoReaction_FullMethodName, in, out, cOpts...)
+	out := new(ListMemoReactionsResponse)
+	err := c.cc.Invoke(ctx, MemoService_ListMemoReactions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -247,10 +255,10 @@ func (c *memoServiceClient) DeleteMemoReaction(ctx context.Context, in *DeleteMe
 	return out, nil
 }
 
-func (c *memoServiceClient) CreateMemoShare(ctx context.Context, in *CreateMemoShareRequest, opts ...grpc.CallOption) (*MemoShare, error) {
+func (c *memoServiceClient) UpsertMemoReaction(ctx context.Context, in *UpsertMemoReactionRequest, opts ...grpc.CallOption) (*Reaction, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(MemoShare)
-	err := c.cc.Invoke(ctx, MemoService_CreateMemoShare_FullMethodName, in, out, cOpts...)
+	out := new(Reaction)
+	err := c.cc.Invoke(ctx, MemoService_UpsertMemoReaction_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -261,6 +269,16 @@ func (c *memoServiceClient) ListMemoShares(ctx context.Context, in *ListMemoShar
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMemoSharesResponse)
 	err := c.cc.Invoke(ctx, MemoService_ListMemoShares_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *memoServiceClient) CreateMemoShare(ctx context.Context, in *CreateMemoShareRequest, opts ...grpc.CallOption) (*MemoShare, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MemoShare)
+	err := c.cc.Invoke(ctx, MemoService_CreateMemoShare_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -310,57 +328,75 @@ func (c *memoServiceClient) BatchGetLinkMetadata(ctx context.Context, in *BatchG
 // MemoServiceServer is the server API for MemoService service.
 // All implementations must embed UnimplementedMemoServiceServer
 // for forward compatibility.
+//
+// MemoService manages memos and their attachments, relations, comments,
+// reactions, and share links.
 type MemoServiceServer interface {
-	// CreateMemo creates a memo. The request body is a Memo; set its content
-	// (Markdown) and visibility (PRIVATE | PROTECTED | PUBLIC | SPACE,
-	// default PRIVATE).
-	// The memo is owned by the authenticated user; requires authentication.
-	CreateMemo(context.Context, *CreateMemoRequest) (*Memo, error)
-	// ListMemos lists readable non-comment memos with pagination and filter.
+	// ListMemos lists the memos the caller can read, excluding comments.
+	// Anonymous callers can list only when the instance allows public access.
 	ListMemos(context.Context, *ListMemosRequest) (*ListMemosResponse, error)
-	// GetMemo gets a memo.
+	// GetMemo gets a memo. Requires read access to the memo.
 	GetMemo(context.Context, *GetMemoRequest) (*Memo, error)
-	// UpdateMemo updates a memo.
+	// CreateMemo creates a memo owned by the authenticated user. The request body
+	// is a Memo; set its Markdown content and visibility (defaults to PRIVATE).
+	// Requires authentication.
+	CreateMemo(context.Context, *CreateMemoRequest) (*Memo, error)
+	// UpdateMemo updates the memo fields listed in update_mask. Requires the memo
+	// creator or an instance administrator.
 	UpdateMemo(context.Context, *UpdateMemoRequest) (*Memo, error)
-	// DeleteMemo deletes only the named memo and its owned resources. It removes
-	// incident relations but never deletes another memo.
+	// DeleteMemo deletes the named memo and its comment subtree, including nested
+	// replies and their owned resources. It removes incident relations for all
+	// deleted memos. Requires the memo creator or an instance administrator.
 	DeleteMemo(context.Context, *DeleteMemoRequest) (*emptypb.Empty, error)
+	// ListMemoAttachments lists the attachments of a memo. Requires read access
+	// to the memo.
+	ListMemoAttachments(context.Context, *ListMemoAttachmentsRequest) (*ListMemoAttachmentsResponse, error)
 	// SetMemoAttachments replaces the full set of attachments on a memo with the
 	// provided list (not an append). Pass the complete desired set; an empty list
-	// clears all attachments. Idempotent.
+	// clears all attachments. Idempotent. Requires the memo creator or an
+	// instance administrator.
 	SetMemoAttachments(context.Context, *SetMemoAttachmentsRequest) (*emptypb.Empty, error)
-	// ListMemoAttachments lists attachments for a memo.
-	ListMemoAttachments(context.Context, *ListMemoAttachmentsRequest) (*ListMemoAttachmentsResponse, error)
+	// ListMemoRelations lists the relations of a memo in both directions.
+	// Requires read access to the memo.
+	ListMemoRelations(context.Context, *ListMemoRelationsRequest) (*ListMemoRelationsResponse, error)
 	// SetMemoRelations replaces the full set of mutable REFERENCE relations on a
 	// memo. COMMENT relations are immutable creation context and are rejected by
 	// this RPC. An empty list clears references without changing COMMENT.
+	// Requires the memo creator or an instance administrator.
 	SetMemoRelations(context.Context, *SetMemoRelationsRequest) (*emptypb.Empty, error)
-	// ListMemoRelations lists relations for a memo.
-	ListMemoRelations(context.Context, *ListMemoRelationsRequest) (*ListMemoRelationsResponse, error)
+	// ListMemoComments lists the active comments on a memo that the caller can
+	// read. Requires read access to the memo.
+	ListMemoComments(context.Context, *ListMemoCommentsRequest) (*ListMemoCommentsResponse, error)
 	// CreateMemoComment atomically creates an independent memo plus one immutable
 	// COMMENT context relation to the named memo. The new memo keeps its own
-	// placement, visibility, authorship, and lifecycle.
+	// placement, visibility, authorship, and lifecycle. The named memo must be
+	// readable by the caller and not archived.
 	CreateMemoComment(context.Context, *CreateMemoCommentRequest) (*Memo, error)
-	// ListMemoComments lists comments for a memo.
-	ListMemoComments(context.Context, *ListMemoCommentsRequest) (*ListMemoCommentsResponse, error)
-	// ListMemoReactions lists reactions for a memo.
+	// ListMemoReactions lists the reactions on a memo. Requires read access to
+	// the memo.
 	ListMemoReactions(context.Context, *ListMemoReactionsRequest) (*ListMemoReactionsResponse, error)
-	// UpsertMemoReaction adds or updates the authenticated user's reaction on a memo.
-	UpsertMemoReaction(context.Context, *UpsertMemoReactionRequest) (*Reaction, error)
-	// DeleteMemoReaction deletes a reaction for a memo.
+	// DeleteMemoReaction deletes a reaction. Requires the reaction creator or an
+	// instance administrator.
 	DeleteMemoReaction(context.Context, *DeleteMemoReactionRequest) (*emptypb.Empty, error)
-	// CreateMemoShare creates a share link for a memo. Requires the memo creator or an instance administrator.
-	CreateMemoShare(context.Context, *CreateMemoShareRequest) (*MemoShare, error)
-	// ListMemoShares lists all share links for a memo. Requires the memo creator or an instance administrator.
+	// UpsertMemoReaction adds or updates the authenticated user's reaction on a
+	// memo. Requires read access to the memo.
+	UpsertMemoReaction(context.Context, *UpsertMemoReactionRequest) (*Reaction, error)
+	// ListMemoShares lists all share links for a memo. Requires the memo creator
+	// or an instance administrator.
 	ListMemoShares(context.Context, *ListMemoSharesRequest) (*ListMemoSharesResponse, error)
-	// DeleteMemoShare revokes a share link. Requires the memo creator or an instance administrator.
+	// CreateMemoShare creates a share link for a memo. Requires the memo creator
+	// or an instance administrator. Only active memos without SPACE visibility
+	// can be shared.
+	CreateMemoShare(context.Context, *CreateMemoShareRequest) (*MemoShare, error)
+	// DeleteMemoShare revokes a share link. Requires the memo creator or an
+	// instance administrator.
 	DeleteMemoShare(context.Context, *DeleteMemoShareRequest) (*emptypb.Empty, error)
-	// GetSharedMemo resolves a share token to its memo. No authentication required.
-	// Returns NOT_FOUND if the token is invalid or expired.
+	// GetSharedMemo resolves a share token to its memo. No authentication is
+	// required. Returns NOT_FOUND if the token is invalid or expired.
 	GetSharedMemo(context.Context, *GetSharedMemoRequest) (*Memo, error)
-	// GetLinkMetadata gets metadata for a link.
+	// GetLinkMetadata fetches the title, description, and image of a link.
 	GetLinkMetadata(context.Context, *GetLinkMetadataRequest) (*LinkMetadata, error)
-	// BatchGetLinkMetadata gets metadata for links.
+	// BatchGetLinkMetadata fetches the metadata of up to 10 links.
 	BatchGetLinkMetadata(context.Context, *BatchGetLinkMetadataRequest) (*BatchGetLinkMetadataResponse, error)
 	mustEmbedUnimplementedMemoServiceServer()
 }
@@ -372,14 +408,14 @@ type MemoServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedMemoServiceServer struct{}
 
-func (UnimplementedMemoServiceServer) CreateMemo(context.Context, *CreateMemoRequest) (*Memo, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateMemo not implemented")
-}
 func (UnimplementedMemoServiceServer) ListMemos(context.Context, *ListMemosRequest) (*ListMemosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMemos not implemented")
 }
 func (UnimplementedMemoServiceServer) GetMemo(context.Context, *GetMemoRequest) (*Memo, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMemo not implemented")
+}
+func (UnimplementedMemoServiceServer) CreateMemo(context.Context, *CreateMemoRequest) (*Memo, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateMemo not implemented")
 }
 func (UnimplementedMemoServiceServer) UpdateMemo(context.Context, *UpdateMemoRequest) (*Memo, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateMemo not implemented")
@@ -387,38 +423,38 @@ func (UnimplementedMemoServiceServer) UpdateMemo(context.Context, *UpdateMemoReq
 func (UnimplementedMemoServiceServer) DeleteMemo(context.Context, *DeleteMemoRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMemo not implemented")
 }
-func (UnimplementedMemoServiceServer) SetMemoAttachments(context.Context, *SetMemoAttachmentsRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method SetMemoAttachments not implemented")
-}
 func (UnimplementedMemoServiceServer) ListMemoAttachments(context.Context, *ListMemoAttachmentsRequest) (*ListMemoAttachmentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMemoAttachments not implemented")
 }
-func (UnimplementedMemoServiceServer) SetMemoRelations(context.Context, *SetMemoRelationsRequest) (*emptypb.Empty, error) {
-	return nil, status.Error(codes.Unimplemented, "method SetMemoRelations not implemented")
+func (UnimplementedMemoServiceServer) SetMemoAttachments(context.Context, *SetMemoAttachmentsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetMemoAttachments not implemented")
 }
 func (UnimplementedMemoServiceServer) ListMemoRelations(context.Context, *ListMemoRelationsRequest) (*ListMemoRelationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMemoRelations not implemented")
 }
-func (UnimplementedMemoServiceServer) CreateMemoComment(context.Context, *CreateMemoCommentRequest) (*Memo, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateMemoComment not implemented")
+func (UnimplementedMemoServiceServer) SetMemoRelations(context.Context, *SetMemoRelationsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetMemoRelations not implemented")
 }
 func (UnimplementedMemoServiceServer) ListMemoComments(context.Context, *ListMemoCommentsRequest) (*ListMemoCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMemoComments not implemented")
 }
+func (UnimplementedMemoServiceServer) CreateMemoComment(context.Context, *CreateMemoCommentRequest) (*Memo, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateMemoComment not implemented")
+}
 func (UnimplementedMemoServiceServer) ListMemoReactions(context.Context, *ListMemoReactionsRequest) (*ListMemoReactionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMemoReactions not implemented")
-}
-func (UnimplementedMemoServiceServer) UpsertMemoReaction(context.Context, *UpsertMemoReactionRequest) (*Reaction, error) {
-	return nil, status.Error(codes.Unimplemented, "method UpsertMemoReaction not implemented")
 }
 func (UnimplementedMemoServiceServer) DeleteMemoReaction(context.Context, *DeleteMemoReactionRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMemoReaction not implemented")
 }
-func (UnimplementedMemoServiceServer) CreateMemoShare(context.Context, *CreateMemoShareRequest) (*MemoShare, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateMemoShare not implemented")
+func (UnimplementedMemoServiceServer) UpsertMemoReaction(context.Context, *UpsertMemoReactionRequest) (*Reaction, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpsertMemoReaction not implemented")
 }
 func (UnimplementedMemoServiceServer) ListMemoShares(context.Context, *ListMemoSharesRequest) (*ListMemoSharesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMemoShares not implemented")
+}
+func (UnimplementedMemoServiceServer) CreateMemoShare(context.Context, *CreateMemoShareRequest) (*MemoShare, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateMemoShare not implemented")
 }
 func (UnimplementedMemoServiceServer) DeleteMemoShare(context.Context, *DeleteMemoShareRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMemoShare not implemented")
@@ -453,24 +489,6 @@ func RegisterMemoServiceServer(s grpc.ServiceRegistrar, srv MemoServiceServer) {
 	s.RegisterService(&MemoService_ServiceDesc, srv)
 }
 
-func _MemoService_CreateMemo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateMemoRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MemoServiceServer).CreateMemo(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MemoService_CreateMemo_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MemoServiceServer).CreateMemo(ctx, req.(*CreateMemoRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MemoService_ListMemos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMemosRequest)
 	if err := dec(in); err != nil {
@@ -503,6 +521,24 @@ func _MemoService_GetMemo_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MemoServiceServer).GetMemo(ctx, req.(*GetMemoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MemoService_CreateMemo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMemoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MemoServiceServer).CreateMemo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MemoService_CreateMemo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MemoServiceServer).CreateMemo(ctx, req.(*CreateMemoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -543,24 +579,6 @@ func _MemoService_DeleteMemo_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MemoService_SetMemoAttachments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetMemoAttachmentsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MemoServiceServer).SetMemoAttachments(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MemoService_SetMemoAttachments_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MemoServiceServer).SetMemoAttachments(ctx, req.(*SetMemoAttachmentsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _MemoService_ListMemoAttachments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMemoAttachmentsRequest)
 	if err := dec(in); err != nil {
@@ -579,20 +597,20 @@ func _MemoService_ListMemoAttachments_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MemoService_SetMemoRelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SetMemoRelationsRequest)
+func _MemoService_SetMemoAttachments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetMemoAttachmentsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MemoServiceServer).SetMemoRelations(ctx, in)
+		return srv.(MemoServiceServer).SetMemoAttachments(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MemoService_SetMemoRelations_FullMethodName,
+		FullMethod: MemoService_SetMemoAttachments_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MemoServiceServer).SetMemoRelations(ctx, req.(*SetMemoRelationsRequest))
+		return srv.(MemoServiceServer).SetMemoAttachments(ctx, req.(*SetMemoAttachmentsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -615,20 +633,20 @@ func _MemoService_ListMemoRelations_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MemoService_CreateMemoComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateMemoCommentRequest)
+func _MemoService_SetMemoRelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetMemoRelationsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MemoServiceServer).CreateMemoComment(ctx, in)
+		return srv.(MemoServiceServer).SetMemoRelations(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MemoService_CreateMemoComment_FullMethodName,
+		FullMethod: MemoService_SetMemoRelations_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MemoServiceServer).CreateMemoComment(ctx, req.(*CreateMemoCommentRequest))
+		return srv.(MemoServiceServer).SetMemoRelations(ctx, req.(*SetMemoRelationsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -651,6 +669,24 @@ func _MemoService_ListMemoComments_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MemoService_CreateMemoComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMemoCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MemoServiceServer).CreateMemoComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MemoService_CreateMemoComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MemoServiceServer).CreateMemoComment(ctx, req.(*CreateMemoCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MemoService_ListMemoReactions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMemoReactionsRequest)
 	if err := dec(in); err != nil {
@@ -665,24 +701,6 @@ func _MemoService_ListMemoReactions_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MemoServiceServer).ListMemoReactions(ctx, req.(*ListMemoReactionsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _MemoService_UpsertMemoReaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpsertMemoReactionRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MemoServiceServer).UpsertMemoReaction(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: MemoService_UpsertMemoReaction_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MemoServiceServer).UpsertMemoReaction(ctx, req.(*UpsertMemoReactionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -705,20 +723,20 @@ func _MemoService_DeleteMemoReaction_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MemoService_CreateMemoShare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateMemoShareRequest)
+func _MemoService_UpsertMemoReaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpsertMemoReactionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MemoServiceServer).CreateMemoShare(ctx, in)
+		return srv.(MemoServiceServer).UpsertMemoReaction(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MemoService_CreateMemoShare_FullMethodName,
+		FullMethod: MemoService_UpsertMemoReaction_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MemoServiceServer).CreateMemoShare(ctx, req.(*CreateMemoShareRequest))
+		return srv.(MemoServiceServer).UpsertMemoReaction(ctx, req.(*UpsertMemoReactionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -737,6 +755,24 @@ func _MemoService_ListMemoShares_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MemoServiceServer).ListMemoShares(ctx, req.(*ListMemoSharesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MemoService_CreateMemoShare_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMemoShareRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MemoServiceServer).CreateMemoShare(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MemoService_CreateMemoShare_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MemoServiceServer).CreateMemoShare(ctx, req.(*CreateMemoShareRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -817,13 +853,9 @@ func _MemoService_BatchGetLinkMetadata_Handler(srv interface{}, ctx context.Cont
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var MemoService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "memos.api.v1.MemoService",
+	ServiceName: "memos.api.MemoService",
 	HandlerType: (*MemoServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "CreateMemo",
-			Handler:    _MemoService_CreateMemo_Handler,
-		},
 		{
 			MethodName: "ListMemos",
 			Handler:    _MemoService_ListMemos_Handler,
@@ -831,6 +863,10 @@ var MemoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMemo",
 			Handler:    _MemoService_GetMemo_Handler,
+		},
+		{
+			MethodName: "CreateMemo",
+			Handler:    _MemoService_CreateMemo_Handler,
 		},
 		{
 			MethodName: "UpdateMemo",
@@ -841,48 +877,48 @@ var MemoService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MemoService_DeleteMemo_Handler,
 		},
 		{
-			MethodName: "SetMemoAttachments",
-			Handler:    _MemoService_SetMemoAttachments_Handler,
-		},
-		{
 			MethodName: "ListMemoAttachments",
 			Handler:    _MemoService_ListMemoAttachments_Handler,
 		},
 		{
-			MethodName: "SetMemoRelations",
-			Handler:    _MemoService_SetMemoRelations_Handler,
+			MethodName: "SetMemoAttachments",
+			Handler:    _MemoService_SetMemoAttachments_Handler,
 		},
 		{
 			MethodName: "ListMemoRelations",
 			Handler:    _MemoService_ListMemoRelations_Handler,
 		},
 		{
-			MethodName: "CreateMemoComment",
-			Handler:    _MemoService_CreateMemoComment_Handler,
+			MethodName: "SetMemoRelations",
+			Handler:    _MemoService_SetMemoRelations_Handler,
 		},
 		{
 			MethodName: "ListMemoComments",
 			Handler:    _MemoService_ListMemoComments_Handler,
 		},
 		{
-			MethodName: "ListMemoReactions",
-			Handler:    _MemoService_ListMemoReactions_Handler,
+			MethodName: "CreateMemoComment",
+			Handler:    _MemoService_CreateMemoComment_Handler,
 		},
 		{
-			MethodName: "UpsertMemoReaction",
-			Handler:    _MemoService_UpsertMemoReaction_Handler,
+			MethodName: "ListMemoReactions",
+			Handler:    _MemoService_ListMemoReactions_Handler,
 		},
 		{
 			MethodName: "DeleteMemoReaction",
 			Handler:    _MemoService_DeleteMemoReaction_Handler,
 		},
 		{
-			MethodName: "CreateMemoShare",
-			Handler:    _MemoService_CreateMemoShare_Handler,
+			MethodName: "UpsertMemoReaction",
+			Handler:    _MemoService_UpsertMemoReaction_Handler,
 		},
 		{
 			MethodName: "ListMemoShares",
 			Handler:    _MemoService_ListMemoShares_Handler,
+		},
+		{
+			MethodName: "CreateMemoShare",
+			Handler:    _MemoService_CreateMemoShare_Handler,
 		},
 		{
 			MethodName: "DeleteMemoShare",
@@ -902,5 +938,5 @@ var MemoService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/memo_service.proto",
+	Metadata: "api/memo_service.proto",
 }

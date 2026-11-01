@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: api/v1/idp_service.proto
+// source: api/idp_service.proto
 
-package v1
+package api
 
 import (
 	context "context"
@@ -20,26 +20,35 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityProviderService_ListIdentityProviders_FullMethodName  = "/memos.api.v1.IdentityProviderService/ListIdentityProviders"
-	IdentityProviderService_GetIdentityProvider_FullMethodName    = "/memos.api.v1.IdentityProviderService/GetIdentityProvider"
-	IdentityProviderService_CreateIdentityProvider_FullMethodName = "/memos.api.v1.IdentityProviderService/CreateIdentityProvider"
-	IdentityProviderService_UpdateIdentityProvider_FullMethodName = "/memos.api.v1.IdentityProviderService/UpdateIdentityProvider"
-	IdentityProviderService_DeleteIdentityProvider_FullMethodName = "/memos.api.v1.IdentityProviderService/DeleteIdentityProvider"
+	IdentityProviderService_ListIdentityProviders_FullMethodName  = "/memos.api.IdentityProviderService/ListIdentityProviders"
+	IdentityProviderService_GetIdentityProvider_FullMethodName    = "/memos.api.IdentityProviderService/GetIdentityProvider"
+	IdentityProviderService_CreateIdentityProvider_FullMethodName = "/memos.api.IdentityProviderService/CreateIdentityProvider"
+	IdentityProviderService_UpdateIdentityProvider_FullMethodName = "/memos.api.IdentityProviderService/UpdateIdentityProvider"
+	IdentityProviderService_DeleteIdentityProvider_FullMethodName = "/memos.api.IdentityProviderService/DeleteIdentityProvider"
 )
 
 // IdentityProviderServiceClient is the client API for IdentityProviderService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// IdentityProviderService manages the external identity providers users can sign in with.
 type IdentityProviderServiceClient interface {
 	// ListIdentityProviders lists identity providers.
+	// Public, so the sign-in page can show SSO options. Client secrets are never returned.
 	ListIdentityProviders(ctx context.Context, in *ListIdentityProvidersRequest, opts ...grpc.CallOption) (*ListIdentityProvidersResponse, error)
 	// GetIdentityProvider gets an identity provider.
+	// The client secret is never returned.
 	GetIdentityProvider(ctx context.Context, in *GetIdentityProviderRequest, opts ...grpc.CallOption) (*IdentityProvider, error)
 	// CreateIdentityProvider creates an identity provider.
+	// Requires the admin role. Fails with FAILED_PRECONDITION when the ID belongs to a provider configured by the
+	// deployment.
 	CreateIdentityProvider(ctx context.Context, in *CreateIdentityProviderRequest, opts ...grpc.CallOption) (*IdentityProvider, error)
 	// UpdateIdentityProvider updates an identity provider.
+	// Requires the admin role. Providers configured by the deployment cannot be updated.
 	UpdateIdentityProvider(ctx context.Context, in *UpdateIdentityProviderRequest, opts ...grpc.CallOption) (*IdentityProvider, error)
 	// DeleteIdentityProvider deletes an identity provider.
+	// Requires the admin role. Providers configured by the deployment cannot be deleted. Fails with
+	// FAILED_PRECONDITION when password sign-in is disabled for regular users and no other effective provider remains.
 	DeleteIdentityProvider(ctx context.Context, in *DeleteIdentityProviderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -104,16 +113,25 @@ func (c *identityProviderServiceClient) DeleteIdentityProvider(ctx context.Conte
 // IdentityProviderServiceServer is the server API for IdentityProviderService service.
 // All implementations must embed UnimplementedIdentityProviderServiceServer
 // for forward compatibility.
+//
+// IdentityProviderService manages the external identity providers users can sign in with.
 type IdentityProviderServiceServer interface {
 	// ListIdentityProviders lists identity providers.
+	// Public, so the sign-in page can show SSO options. Client secrets are never returned.
 	ListIdentityProviders(context.Context, *ListIdentityProvidersRequest) (*ListIdentityProvidersResponse, error)
 	// GetIdentityProvider gets an identity provider.
+	// The client secret is never returned.
 	GetIdentityProvider(context.Context, *GetIdentityProviderRequest) (*IdentityProvider, error)
 	// CreateIdentityProvider creates an identity provider.
+	// Requires the admin role. Fails with FAILED_PRECONDITION when the ID belongs to a provider configured by the
+	// deployment.
 	CreateIdentityProvider(context.Context, *CreateIdentityProviderRequest) (*IdentityProvider, error)
 	// UpdateIdentityProvider updates an identity provider.
+	// Requires the admin role. Providers configured by the deployment cannot be updated.
 	UpdateIdentityProvider(context.Context, *UpdateIdentityProviderRequest) (*IdentityProvider, error)
 	// DeleteIdentityProvider deletes an identity provider.
+	// Requires the admin role. Providers configured by the deployment cannot be deleted. Fails with
+	// FAILED_PRECONDITION when password sign-in is disabled for regular users and no other effective provider remains.
 	DeleteIdentityProvider(context.Context, *DeleteIdentityProviderRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedIdentityProviderServiceServer()
 }
@@ -256,7 +274,7 @@ func _IdentityProviderService_DeleteIdentityProvider_Handler(srv interface{}, ct
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var IdentityProviderService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "memos.api.v1.IdentityProviderService",
+	ServiceName: "memos.api.IdentityProviderService",
 	HandlerType: (*IdentityProviderServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -281,5 +299,5 @@ var IdentityProviderService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/idp_service.proto",
+	Metadata: "api/idp_service.proto",
 }

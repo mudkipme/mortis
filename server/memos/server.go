@@ -21,7 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/mudkipme/mortis/api"
-	v1pb "github.com/mudkipme/mortis/server/memos/proto/gen/api/v1"
+	apipb "github.com/mudkipme/mortis/server/memos/proto/gen/api"
 	"github.com/mudkipme/mortis/utils"
 )
 
@@ -45,9 +45,9 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 		return err
 	}
 
-	req := &v1pb.CreateMemoRequest{
-		Memo: &v1pb.Memo{
-			Visibility: v1pb.Visibility_PRIVATE,
+	req := &apipb.CreateMemoRequest{
+		Memo: &apipb.Memo{
+			Visibility: apipb.Visibility_PRIVATE,
 		},
 	}
 	if params.Content != nil {
@@ -56,11 +56,11 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 	if params.Visibility != nil {
 		switch *params.Visibility {
 		case api.Public:
-			req.Memo.Visibility = v1pb.Visibility_PUBLIC
+			req.Memo.Visibility = apipb.Visibility_PUBLIC
 		case api.Protected:
-			req.Memo.Visibility = v1pb.Visibility_PROTECTED
+			req.Memo.Visibility = apipb.Visibility_PROTECTED
 		case api.Private:
-			req.Memo.Visibility = v1pb.Visibility_PRIVATE
+			req.Memo.Visibility = apipb.Visibility_PRIVATE
 		}
 	}
 	if params.CreatedTs != nil && *params.CreatedTs != 0 {
@@ -73,7 +73,7 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 				slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 				return err
 			}
-			req.Memo.Attachments = append(req.Memo.Attachments, &v1pb.Attachment{
+			req.Memo.Attachments = append(req.Memo.Attachments, &apipb.Attachment{
 				Name: name,
 			})
 		}
@@ -93,18 +93,18 @@ func (s *Server) CreateMemo(ctx echo.Context) error {
 			}
 			switch *relation.Type {
 			case api.MemoRelationReference:
-				req.Memo.Relations = append(req.Memo.Relations, &v1pb.MemoRelation{
-					RelatedMemo: &v1pb.MemoRelation_Memo{
+				req.Memo.Relations = append(req.Memo.Relations, &apipb.MemoRelation{
+					RelatedMemo: &apipb.MemoRelation_MemoRef{
 						Name: relatedName,
 					},
-					Type: v1pb.MemoRelation_REFERENCE,
+					Type: apipb.MemoRelation_REFERENCE,
 				})
 			}
 		}
 	}
 
-	resp := &v1pb.Memo{}
-	if err := s.doProtoRequest(ctx, http.MethodPost, "/api/v1/memos", nil, req.Memo, resp); err != nil {
+	resp := &apipb.Memo{}
+	if err := s.doProtoRequest(ctx, http.MethodPost, "/api/memos", nil, req.Memo, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to create memo", "error", err)
 		return err
 	}
@@ -132,7 +132,7 @@ func (s *Server) DeleteMemo(ctx echo.Context, memoId int) error {
 		slog.ErrorContext(ctx.Request().Context(), "failed to search memo id", "error", err)
 		return err
 	}
-	if err := s.doProtoRequest(ctx, http.MethodDelete, "/api/v1/"+name, nil, nil, nil); err != nil {
+	if err := s.doProtoRequest(ctx, http.MethodDelete, "/api/"+name, nil, nil, nil); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to delete memo", "error", err)
 		return err
 	}
@@ -146,7 +146,7 @@ func (s *Server) DeleteResource(ctx echo.Context, resourceId int) error {
 		slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 		return err
 	}
-	if err := s.doProtoRequest(ctx, http.MethodDelete, "/api/v1/"+name, nil, nil, nil); err != nil {
+	if err := s.doProtoRequest(ctx, http.MethodDelete, "/api/"+name, nil, nil, nil); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to delete resource", "error", err)
 		return err
 	}
@@ -165,7 +165,7 @@ func (s *Server) DeleteTag(ctx echo.Context) error {
 	// 	return ctx.JSON(200, false)
 	// }
 
-	// _, err := s.memoService.DeleteMemoTag(grpcCtx, &v1pb.DeleteMemoTagRequest{
+	// _, err := s.memoService.DeleteMemoTag(grpcCtx, &apipb.DeleteMemoTagRequest{
 	// 	Parent: "memos/-",
 	// 	Tag:    *params.Name,
 	// })
@@ -178,8 +178,8 @@ func (s *Server) DeleteTag(ctx echo.Context) error {
 
 // GetCurrentUser implements api.ServerInterface.
 func (s *Server) GetCurrentUser(ctx echo.Context) error {
-	resp := &v1pb.GetCurrentUserResponse{}
-	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/auth/me", nil, nil, resp); err != nil {
+	resp := &apipb.GetCurrentUserResponse{}
+	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/auth/me", nil, nil, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 		return err
 	}
@@ -188,14 +188,14 @@ func (s *Server) GetCurrentUser(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "current user not found")
 	}
 	rowStatus := api.Normal
-	if resp.User.State == v1pb.State_ARCHIVED {
+	if resp.User.State == apipb.State_ARCHIVED {
 		rowStatus = api.Archived
 	}
 	var role api.Role
 	switch resp.User.Role {
-	case v1pb.User_ADMIN:
+	case apipb.User_ADMIN:
 		role = api.RoleAdmin
-	case v1pb.User_USER:
+	case apipb.User_USER:
 		role = api.RoleUser
 	}
 	userID := s.cacheUserName(resp.User.Name)
@@ -220,8 +220,8 @@ func (s *Server) GetMemo(ctx echo.Context, memoId int) error {
 		return err
 	}
 
-	resp := &v1pb.Memo{}
-	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/"+name, nil, nil, resp); err != nil {
+	resp := &apipb.Memo{}
+	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/"+name, nil, nil, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get memo", "error", err)
 		return err
 	}
@@ -236,8 +236,8 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 		slog.ErrorContext(ctx.Request().Context(), "failed to search memo id", "error", err)
 		return err
 	}
-	resp := &v1pb.Memo{}
-	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/"+name, nil, nil, resp); err != nil {
+	resp := &apipb.Memo{}
+	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/"+name, nil, nil, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get memo", "error", err)
 		return err
 	}
@@ -257,9 +257,9 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 		s.memoIdToName.Store(relatedMemoID, relatedName)
 		var relationType api.MemoRelationType
 		switch relation.Type {
-		case v1pb.MemoRelation_COMMENT:
+		case apipb.MemoRelation_COMMENT:
 			relationType = api.MemoRelationComment
-		case v1pb.MemoRelation_REFERENCE:
+		case apipb.MemoRelation_REFERENCE:
 			relationType = api.MemoRelationReference
 		}
 
@@ -274,8 +274,8 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 
 // GetStatus implements api.ServerInterface.
 func (s *Server) GetStatus(ctx echo.Context) error {
-	resp := &v1pb.InstanceProfile{}
-	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/instance/profile", nil, nil, resp); err != nil {
+	resp := &apipb.InstanceProfile{}
+	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/instance/profile", nil, nil, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get workspace profile", "error", err)
 		return err
 	}
@@ -304,8 +304,8 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 		}
 		filter = s.memoCreatorFilter(name)
 	} else {
-		user := &v1pb.GetCurrentUserResponse{}
-		if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/auth/me", nil, nil, user); err != nil {
+		user := &apipb.GetCurrentUserResponse{}
+		if err := s.doProtoRequest(ctx, http.MethodGet, "/api/auth/me", nil, nil, user); err != nil {
 			slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 			return err
 		}
@@ -314,12 +314,12 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 		}
 	}
 
-	state := v1pb.State_STATE_UNSPECIFIED
+	state := apipb.State_STATE_UNSPECIFIED
 	if params.RowStatus != nil && *params.RowStatus == api.ARCHIVED {
-		state = v1pb.State_ARCHIVED
+		state = apipb.State_ARCHIVED
 	}
 
-	var allResp []*v1pb.Memo
+	var allResp []*apipb.Memo
 	if params.Limit == nil && params.Offset == nil {
 		pageToken := ""
 		for {
@@ -331,11 +331,11 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 			if filter != "" {
 				query.Set("filter", filter)
 			}
-			if state != v1pb.State_STATE_UNSPECIFIED {
+			if state != apipb.State_STATE_UNSPECIFIED {
 				query.Set("state", state.String())
 			}
-			resp := &v1pb.ListMemosResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/memos", query, nil, resp); err != nil {
+			resp := &apipb.ListMemosResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/memos", query, nil, resp); err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to list memos", "error", err)
 				return err
 			}
@@ -372,11 +372,11 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 			if filter != "" {
 				query.Set("filter", filter)
 			}
-			if state != v1pb.State_STATE_UNSPECIFIED {
+			if state != apipb.State_STATE_UNSPECIFIED {
 				query.Set("state", state.String())
 			}
-			resp := &v1pb.ListMemosResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/memos", query, nil, resp); err != nil {
+			resp := &apipb.ListMemosResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/memos", query, nil, resp); err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to list memos", "error", err)
 				return err
 			}
@@ -419,7 +419,7 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 // ListPublicMemos implements api.ServerInterface.
 func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosParams) error {
 	filter := "visibility in [\"PUBLIC\", \"PROTECTED\"]"
-	var allResp []*v1pb.Memo
+	var allResp []*apipb.Memo
 	if params.Limit == nil && params.Offset == nil {
 		pageToken := ""
 		for {
@@ -429,8 +429,8 @@ func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosPar
 			if pageToken != "" {
 				query.Set("pageToken", pageToken)
 			}
-			resp := &v1pb.ListMemosResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/memos", query, nil, resp); err != nil {
+			resp := &apipb.ListMemosResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/memos", query, nil, resp); err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to list memos", "error", err)
 				return err
 			}
@@ -465,8 +465,8 @@ func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosPar
 			if pageToken != "" {
 				query.Set("pageToken", pageToken)
 			}
-			resp := &v1pb.ListMemosResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/memos", query, nil, resp); err != nil {
+			resp := &apipb.ListMemosResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/memos", query, nil, resp); err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to list memos", "error", err)
 				return err
 			}
@@ -508,7 +508,7 @@ func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosPar
 
 // ListResources implements api.ServerInterface.
 func (s *Server) ListResources(ctx echo.Context, params api.ListResourcesParams) error {
-	var allResp []*v1pb.Attachment
+	var allResp []*apipb.Attachment
 	if params.Limit == nil && params.Offset == nil {
 		pageToken := ""
 		for {
@@ -517,8 +517,8 @@ func (s *Server) ListResources(ctx echo.Context, params api.ListResourcesParams)
 			if pageToken != "" {
 				query.Set("pageToken", pageToken)
 			}
-			resp := &v1pb.ListAttachmentsResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/attachments", query, nil, resp); err != nil {
+			resp := &apipb.ListAttachmentsResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/attachments", query, nil, resp); err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to list resources", "error", err)
 				return err
 			}
@@ -552,8 +552,8 @@ func (s *Server) ListResources(ctx echo.Context, params api.ListResourcesParams)
 			if pageToken != "" {
 				query.Set("pageToken", pageToken)
 			}
-			resp := &v1pb.ListAttachmentsResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/attachments", query, nil, resp); err != nil {
+			resp := &apipb.ListAttachmentsResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/attachments", query, nil, resp); err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to list resources", "error", err)
 				return err
 			}
@@ -592,22 +592,22 @@ func (s *Server) ListResources(ctx echo.Context, params api.ListResourcesParams)
 
 // ListTags implements api.ServerInterface.
 func (s *Server) ListTags(ctx echo.Context) error {
-	user := &v1pb.GetCurrentUserResponse{}
-	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/auth/me", nil, nil, user); err != nil {
+	user := &apipb.GetCurrentUserResponse{}
+	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/auth/me", nil, nil, user); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 		return err
 	}
 	if user.GetUser() == nil {
 		return ctx.JSON(200, []string{})
 	}
-	resp := &v1pb.UserStats{}
-	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/"+user.GetUser().GetName()+":getStats", nil, nil, resp); err != nil {
+	resp := &apipb.UserStats{}
+	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/"+user.GetUser().GetName()+":getStats", nil, nil, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get user stats", "error", err)
 		return err
 	}
 
 	tags := []string{}
-	for tag := range resp.TagCount {
+	for tag := range resp.TagCounts {
 		tags = append(tags, tag)
 	}
 	return ctx.JSON(200, tags)
@@ -628,8 +628,8 @@ func (s *Server) OrganizeMemo(ctx echo.Context, memoId int) error {
 	}
 	query := url.Values{}
 	query.Set("updateMask", "pinned")
-	resp := &v1pb.Memo{}
-	if err := s.doProtoRequest(ctx, http.MethodPatch, "/api/v1/"+name, query, &v1pb.Memo{
+	resp := &apipb.Memo{}
+	if err := s.doProtoRequest(ctx, http.MethodPatch, "/api/"+name, query, &apipb.Memo{
 		Name:   name,
 		Pinned: params.Pinned != nil && *params.Pinned,
 	}, resp); err != nil {
@@ -655,9 +655,9 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 		return err
 	}
 
-	req := &v1pb.UpdateMemoRequest{
+	req := &apipb.UpdateMemoRequest{
 		UpdateMask: &fieldmaskpb.FieldMask{},
-		Memo: &v1pb.Memo{
+		Memo: &apipb.Memo{
 			Name: name,
 		},
 	}
@@ -668,23 +668,23 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 	if params.Visibility != nil {
 		switch *params.Visibility {
 		case api.Public:
-			req.Memo.Visibility = v1pb.Visibility_PUBLIC
+			req.Memo.Visibility = apipb.Visibility_PUBLIC
 		case api.Protected:
-			req.Memo.Visibility = v1pb.Visibility_PROTECTED
+			req.Memo.Visibility = apipb.Visibility_PROTECTED
 		case api.Private:
-			req.Memo.Visibility = v1pb.Visibility_PRIVATE
+			req.Memo.Visibility = apipb.Visibility_PRIVATE
 		}
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "visibility")
 	}
 	if params.ResourceIdList != nil {
-		req.Memo.Attachments = []*v1pb.Attachment{}
+		req.Memo.Attachments = []*apipb.Attachment{}
 		for _, resourceId := range *params.ResourceIdList {
 			name, err := s.searchResourceId(ctx, resourceId)
 			if err != nil {
 				slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 				return err
 			}
-			req.Memo.Attachments = append(req.Memo.Attachments, &v1pb.Attachment{
+			req.Memo.Attachments = append(req.Memo.Attachments, &apipb.Attachment{
 				Name: name,
 			})
 			req.UpdateMask.Paths = append(req.UpdateMask.Paths, "attachments")
@@ -693,9 +693,9 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 	if params.RowStatus != nil {
 		switch *params.RowStatus {
 		case api.Normal:
-			req.Memo.State = v1pb.State_NORMAL
+			req.Memo.State = apipb.State_NORMAL
 		case api.Archived:
-			req.Memo.State = v1pb.State_ARCHIVED
+			req.Memo.State = apipb.State_ARCHIVED
 		}
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "state")
 	}
@@ -711,7 +711,7 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "update_time")
 	}
 	if params.RelationList != nil {
-		req.Memo.Relations = []*v1pb.MemoRelation{}
+		req.Memo.Relations = []*apipb.MemoRelation{}
 		for _, relation := range *params.RelationList {
 			if relation.Type != nil && *relation.Type == api.MemoRelationComment {
 				return echo.NewHTTPError(http.StatusBadRequest, "comments are not supported by Mortis")
@@ -727,11 +727,11 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 				slog.ErrorContext(ctx.Request().Context(), "failed to search related memo id", "error", err)
 				return err
 			}
-			req.Memo.Relations = append(req.Memo.Relations, &v1pb.MemoRelation{
-				RelatedMemo: &v1pb.MemoRelation_Memo{
+			req.Memo.Relations = append(req.Memo.Relations, &apipb.MemoRelation{
+				RelatedMemo: &apipb.MemoRelation_MemoRef{
 					Name: relatedName,
 				},
-				Type: v1pb.MemoRelation_REFERENCE,
+				Type: apipb.MemoRelation_REFERENCE,
 			})
 		}
 		req.UpdateMask.Paths = append(req.UpdateMask.Paths, "relations")
@@ -741,8 +741,8 @@ func (s *Server) UpdateMemo(ctx echo.Context, memoId int) error {
 	if len(req.UpdateMask.Paths) > 0 {
 		query.Set("updateMask", strings.Join(req.UpdateMask.Paths, ","))
 	}
-	resp := &v1pb.Memo{}
-	if err := s.doProtoRequest(ctx, http.MethodPatch, "/api/v1/"+name, query, req.Memo, resp); err != nil {
+	resp := &apipb.Memo{}
+	if err := s.doProtoRequest(ctx, http.MethodPatch, "/api/"+name, query, req.Memo, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to update memo", "error", err)
 		return err
 	}
@@ -764,8 +764,8 @@ func (s *Server) UpdateResource(ctx echo.Context, resourceId int) error {
 		slog.ErrorContext(ctx.Request().Context(), "failed to search resource id", "error", err)
 		return err
 	}
-	req := &v1pb.UpdateAttachmentRequest{
-		Attachment: &v1pb.Attachment{
+	req := &apipb.UpdateAttachmentRequest{
+		Attachment: &apipb.Attachment{
 			Name: name,
 		},
 		UpdateMask: &fieldmaskpb.FieldMask{},
@@ -779,8 +779,8 @@ func (s *Server) UpdateResource(ctx echo.Context, resourceId int) error {
 	if len(req.UpdateMask.Paths) > 0 {
 		query.Set("updateMask", strings.Join(req.UpdateMask.Paths, ","))
 	}
-	resp := &v1pb.Attachment{}
-	if err := s.doProtoRequest(ctx, http.MethodPatch, "/api/v1/"+name, query, req.Attachment, resp); err != nil {
+	resp := &apipb.Attachment{}
+	if err := s.doProtoRequest(ctx, http.MethodPatch, "/api/"+name, query, req.Attachment, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to update resource", "error", err)
 		return err
 	}
@@ -815,8 +815,8 @@ func (s *Server) UploadResource(ctx echo.Context) error {
 		mimeType = http.DetectContentType(buf.Bytes())
 	}
 
-	resp := &v1pb.Attachment{}
-	if err := s.doProtoRequest(ctx, http.MethodPost, "/api/v1/attachments", nil, &v1pb.Attachment{
+	resp := &apipb.Attachment{}
+	if err := s.doProtoRequest(ctx, http.MethodPost, "/api/attachments", nil, &apipb.Attachment{
 		Filename: file.Filename,
 		Type:     mimeType,
 		Content:  buf.Bytes(),
@@ -954,7 +954,7 @@ func (s *Server) doProtoRequest(ctx echo.Context, method, path string, query url
 	return nil
 }
 
-func (s *Server) convertResource(resource *v1pb.Attachment) *api.Resource {
+func (s *Server) convertResource(resource *apipb.Attachment) *api.Resource {
 	id := int(hashToInt53(strings.TrimPrefix(resource.Name, "attachments/")))
 	s.resourceIdToName.Store(id, resource.Name)
 	return &api.Resource{
@@ -971,18 +971,18 @@ func (s *Server) convertResource(resource *v1pb.Attachment) *api.Resource {
 	}
 }
 
-func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
+func (s *Server) convertMemo(memo *apipb.Memo) *api.Memo {
 	rowStatus := api.Normal
-	if memo.State == v1pb.State_ARCHIVED {
+	if memo.State == apipb.State_ARCHIVED {
 		rowStatus = api.Archived
 	}
 	visibility := api.Private
 	switch memo.Visibility {
-	case v1pb.Visibility_PUBLIC:
+	case apipb.Visibility_PUBLIC:
 		visibility = api.Public
-	case v1pb.Visibility_PROTECTED:
+	case apipb.Visibility_PROTECTED:
 		visibility = api.Protected
-	case v1pb.Visibility_SPACE:
+	case apipb.Visibility_SPACE:
 		// Memos 0.21 has no space-scoped visibility; PRIVATE is the safest legacy representation.
 		visibility = api.Private
 	}
@@ -1011,7 +1011,7 @@ func (s *Server) convertMemo(memo *v1pb.Memo) *api.Memo {
 	}
 }
 
-func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*v1pb.Memo, apiMemos []*api.Memo) {
+func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*apipb.Memo, apiMemos []*api.Memo) {
 	creatorNames := make(map[string]string)
 	missingCreators := make([]string, 0)
 	seenMissing := make(map[string]struct{})
@@ -1033,8 +1033,8 @@ func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*v1pb.
 	}
 
 	for _, creator := range missingCreators {
-		resp := &v1pb.User{}
-		if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/"+creator, nil, nil, resp); err != nil {
+		resp := &apipb.User{}
+		if err := s.doProtoRequest(ctx, http.MethodGet, "/api/"+creator, nil, nil, resp); err != nil {
 			slog.WarnContext(ctx.Request().Context(), "failed to get memo creator", "creator", creator, "error", err)
 			continue
 		}
@@ -1063,9 +1063,6 @@ func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*v1pb.
 func (s *Server) memoCreatorFilter(name string) string {
 	if name == "" {
 		return ""
-	}
-	if numericID, err := strconv.Atoi(strings.TrimPrefix(name, "users/")); err == nil {
-		return fmt.Sprintf("creator_id == %d", numericID)
 	}
 	return fmt.Sprintf("creator == %q", name)
 }
@@ -1097,8 +1094,8 @@ func (s *Server) searchUserId(ctx echo.Context, userId int) (string, error) {
 			if currentPageToken != "" {
 				query.Set("pageToken", currentPageToken)
 			}
-			resp := &v1pb.ListUsersResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/users", query, nil, resp); err != nil {
+			resp := &apipb.ListUsersResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/users", query, nil, resp); err != nil {
 				return "", errors.Wrap(err, "failed to list users")
 			}
 			for _, user := range resp.Users {
@@ -1129,8 +1126,8 @@ func (s *Server) searchMemoId(ctx echo.Context, memoId int) (string, error) {
 			if currentPageToken != "" {
 				query.Set("pageToken", currentPageToken)
 			}
-			resp := &v1pb.ListMemosResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/memos", query, nil, resp); err != nil {
+			resp := &apipb.ListMemosResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/memos", query, nil, resp); err != nil {
 				return "", errors.Wrapf(err, "failed to list memos")
 			}
 
@@ -1168,8 +1165,8 @@ func (s *Server) searchResourceId(ctx echo.Context, resourceId int) (string, err
 			if currentPageToken != "" {
 				query.Set("pageToken", currentPageToken)
 			}
-			resp := &v1pb.ListAttachmentsResponse{}
-			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/v1/attachments", query, nil, resp); err != nil {
+			resp := &apipb.ListAttachmentsResponse{}
+			if err := s.doProtoRequest(ctx, http.MethodGet, "/api/attachments", query, nil, resp); err != nil {
 				return "", errors.Wrapf(err, "failed to list resources")
 			}
 			for _, resource := range resp.Attachments {

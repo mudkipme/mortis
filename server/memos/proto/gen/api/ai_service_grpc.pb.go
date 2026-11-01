@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: api/v1/ai_service.proto
+// source: api/ai_service.proto
 
-package v1
+package api
 
 import (
 	context "context"
@@ -19,14 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AIService_Transcribe_FullMethodName = "/memos.api.v1.AIService/Transcribe"
+	AIService_Transcribe_FullMethodName = "/memos.api.AIService/Transcribe"
 )
 
 // AIServiceClient is the client API for AIService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// AIService runs AI tasks through the AI providers configured on the instance.
 type AIServiceClient interface {
-	// Transcribe transcribes an audio file using an instance AI provider.
+	// Transcribe transcribes an audio file with the instance's configured
+	// transcription provider. The caller must be signed in, and requests are rate limited per user.
 	Transcribe(ctx context.Context, in *TranscribeRequest, opts ...grpc.CallOption) (*TranscribeResponse, error)
 }
 
@@ -51,8 +54,11 @@ func (c *aIServiceClient) Transcribe(ctx context.Context, in *TranscribeRequest,
 // AIServiceServer is the server API for AIService service.
 // All implementations must embed UnimplementedAIServiceServer
 // for forward compatibility.
+//
+// AIService runs AI tasks through the AI providers configured on the instance.
 type AIServiceServer interface {
-	// Transcribe transcribes an audio file using an instance AI provider.
+	// Transcribe transcribes an audio file with the instance's configured
+	// transcription provider. The caller must be signed in, and requests are rate limited per user.
 	Transcribe(context.Context, *TranscribeRequest) (*TranscribeResponse, error)
 	mustEmbedUnimplementedAIServiceServer()
 }
@@ -110,7 +116,7 @@ func _AIService_Transcribe_Handler(srv interface{}, ctx context.Context, dec fun
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AIService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "memos.api.v1.AIService",
+	ServiceName: "memos.api.AIService",
 	HandlerType: (*AIServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -119,5 +125,5 @@ var AIService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/ai_service.proto",
+	Metadata: "api/ai_service.proto",
 }

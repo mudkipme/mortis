@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             (unknown)
-// source: api/v1/attachment_service.proto
+// source: api/attachment_service.proto
 
-package v1
+package api
 
 import (
 	context "context"
@@ -20,36 +20,40 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AttachmentService_CreateAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/CreateAttachment"
-	AttachmentService_UploadAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/UploadAttachment"
-	AttachmentService_ListAttachments_FullMethodName        = "/memos.api.v1.AttachmentService/ListAttachments"
-	AttachmentService_GetAttachment_FullMethodName          = "/memos.api.v1.AttachmentService/GetAttachment"
-	AttachmentService_UpdateAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/UpdateAttachment"
-	AttachmentService_DeleteAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/DeleteAttachment"
-	AttachmentService_BatchDeleteAttachments_FullMethodName = "/memos.api.v1.AttachmentService/BatchDeleteAttachments"
+	AttachmentService_ListAttachments_FullMethodName        = "/memos.api.AttachmentService/ListAttachments"
+	AttachmentService_GetAttachment_FullMethodName          = "/memos.api.AttachmentService/GetAttachment"
+	AttachmentService_CreateAttachment_FullMethodName       = "/memos.api.AttachmentService/CreateAttachment"
+	AttachmentService_UpdateAttachment_FullMethodName       = "/memos.api.AttachmentService/UpdateAttachment"
+	AttachmentService_DeleteAttachment_FullMethodName       = "/memos.api.AttachmentService/DeleteAttachment"
+	AttachmentService_BatchDeleteAttachments_FullMethodName = "/memos.api.AttachmentService/BatchDeleteAttachments"
+	AttachmentService_UploadAttachment_FullMethodName       = "/memos.api.AttachmentService/UploadAttachment"
 )
 
 // AttachmentServiceClient is the client API for AttachmentService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// AttachmentService manages files attached to memos.
 type AttachmentServiceClient interface {
-	// CreateAttachment creates a new attachment.
+	// ListAttachments lists attachments linked to memos the caller can read, plus the caller's unlinked uploads.
+	ListAttachments(ctx context.Context, in *ListAttachmentsRequest, opts ...grpc.CallOption) (*ListAttachmentsResponse, error)
+	// GetAttachment gets an attachment by name. An unlinked attachment is visible only to its uploader and admins;
+	// a linked attachment follows the read access of its memo.
+	GetAttachment(ctx context.Context, in *GetAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
+	// CreateAttachment creates an attachment from inline content.
 	CreateAttachment(ctx context.Context, in *CreateAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
-	// UploadAttachment uploads a file in bounded chunks. The first call carries
-	// the spec and returns an upload_id; later calls carry that upload_id.
-	// Uploads are bound to the authenticated user, expire after 30 minutes of
+	// UpdateAttachment updates an attachment. Only `filename` can be updated. The caller must be the uploader or an
+	// admin.
+	UpdateAttachment(ctx context.Context, in *UpdateAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
+	// DeleteAttachment deletes an attachment uploaded by the caller.
+	DeleteAttachment(ctx context.Context, in *DeleteAttachmentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// BatchDeleteAttachments deletes up to 100 attachments in one atomic request. The caller must be the uploader of
+	// each attachment or an admin.
+	BatchDeleteAttachments(ctx context.Context, in *BatchDeleteAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// UploadAttachment uploads a file in bounded chunks. The first call carries the spec and returns an upload_id;
+	// later calls carry that upload_id. Uploads are bound to the authenticated user, expire after 30 minutes of
 	// inactivity, and do not survive a server restart.
 	UploadAttachment(ctx context.Context, in *UploadAttachmentRequest, opts ...grpc.CallOption) (*UploadAttachmentResponse, error)
-	// ListAttachments lists all attachments.
-	ListAttachments(ctx context.Context, in *ListAttachmentsRequest, opts ...grpc.CallOption) (*ListAttachmentsResponse, error)
-	// GetAttachment returns an attachment by name.
-	GetAttachment(ctx context.Context, in *GetAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
-	// UpdateAttachment updates an attachment.
-	UpdateAttachment(ctx context.Context, in *UpdateAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
-	// DeleteAttachment deletes an attachment by name.
-	DeleteAttachment(ctx context.Context, in *DeleteAttachmentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// BatchDeleteAttachments deletes multiple attachments in one request.
-	BatchDeleteAttachments(ctx context.Context, in *BatchDeleteAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type attachmentServiceClient struct {
@@ -58,26 +62,6 @@ type attachmentServiceClient struct {
 
 func NewAttachmentServiceClient(cc grpc.ClientConnInterface) AttachmentServiceClient {
 	return &attachmentServiceClient{cc}
-}
-
-func (c *attachmentServiceClient) CreateAttachment(ctx context.Context, in *CreateAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Attachment)
-	err := c.cc.Invoke(ctx, AttachmentService_CreateAttachment_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *attachmentServiceClient) UploadAttachment(ctx context.Context, in *UploadAttachmentRequest, opts ...grpc.CallOption) (*UploadAttachmentResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UploadAttachmentResponse)
-	err := c.cc.Invoke(ctx, AttachmentService_UploadAttachment_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *attachmentServiceClient) ListAttachments(ctx context.Context, in *ListAttachmentsRequest, opts ...grpc.CallOption) (*ListAttachmentsResponse, error) {
@@ -94,6 +78,16 @@ func (c *attachmentServiceClient) GetAttachment(ctx context.Context, in *GetAtta
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Attachment)
 	err := c.cc.Invoke(ctx, AttachmentService_GetAttachment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attachmentServiceClient) CreateAttachment(ctx context.Context, in *CreateAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Attachment)
+	err := c.cc.Invoke(ctx, AttachmentService_CreateAttachment_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -130,27 +124,41 @@ func (c *attachmentServiceClient) BatchDeleteAttachments(ctx context.Context, in
 	return out, nil
 }
 
+func (c *attachmentServiceClient) UploadAttachment(ctx context.Context, in *UploadAttachmentRequest, opts ...grpc.CallOption) (*UploadAttachmentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadAttachmentResponse)
+	err := c.cc.Invoke(ctx, AttachmentService_UploadAttachment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttachmentServiceServer is the server API for AttachmentService service.
 // All implementations must embed UnimplementedAttachmentServiceServer
 // for forward compatibility.
+//
+// AttachmentService manages files attached to memos.
 type AttachmentServiceServer interface {
-	// CreateAttachment creates a new attachment.
+	// ListAttachments lists attachments linked to memos the caller can read, plus the caller's unlinked uploads.
+	ListAttachments(context.Context, *ListAttachmentsRequest) (*ListAttachmentsResponse, error)
+	// GetAttachment gets an attachment by name. An unlinked attachment is visible only to its uploader and admins;
+	// a linked attachment follows the read access of its memo.
+	GetAttachment(context.Context, *GetAttachmentRequest) (*Attachment, error)
+	// CreateAttachment creates an attachment from inline content.
 	CreateAttachment(context.Context, *CreateAttachmentRequest) (*Attachment, error)
-	// UploadAttachment uploads a file in bounded chunks. The first call carries
-	// the spec and returns an upload_id; later calls carry that upload_id.
-	// Uploads are bound to the authenticated user, expire after 30 minutes of
+	// UpdateAttachment updates an attachment. Only `filename` can be updated. The caller must be the uploader or an
+	// admin.
+	UpdateAttachment(context.Context, *UpdateAttachmentRequest) (*Attachment, error)
+	// DeleteAttachment deletes an attachment uploaded by the caller.
+	DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*emptypb.Empty, error)
+	// BatchDeleteAttachments deletes up to 100 attachments in one atomic request. The caller must be the uploader of
+	// each attachment or an admin.
+	BatchDeleteAttachments(context.Context, *BatchDeleteAttachmentsRequest) (*emptypb.Empty, error)
+	// UploadAttachment uploads a file in bounded chunks. The first call carries the spec and returns an upload_id;
+	// later calls carry that upload_id. Uploads are bound to the authenticated user, expire after 30 minutes of
 	// inactivity, and do not survive a server restart.
 	UploadAttachment(context.Context, *UploadAttachmentRequest) (*UploadAttachmentResponse, error)
-	// ListAttachments lists all attachments.
-	ListAttachments(context.Context, *ListAttachmentsRequest) (*ListAttachmentsResponse, error)
-	// GetAttachment returns an attachment by name.
-	GetAttachment(context.Context, *GetAttachmentRequest) (*Attachment, error)
-	// UpdateAttachment updates an attachment.
-	UpdateAttachment(context.Context, *UpdateAttachmentRequest) (*Attachment, error)
-	// DeleteAttachment deletes an attachment by name.
-	DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*emptypb.Empty, error)
-	// BatchDeleteAttachments deletes multiple attachments in one request.
-	BatchDeleteAttachments(context.Context, *BatchDeleteAttachmentsRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAttachmentServiceServer()
 }
 
@@ -161,17 +169,14 @@ type AttachmentServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAttachmentServiceServer struct{}
 
-func (UnimplementedAttachmentServiceServer) CreateAttachment(context.Context, *CreateAttachmentRequest) (*Attachment, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateAttachment not implemented")
-}
-func (UnimplementedAttachmentServiceServer) UploadAttachment(context.Context, *UploadAttachmentRequest) (*UploadAttachmentResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method UploadAttachment not implemented")
-}
 func (UnimplementedAttachmentServiceServer) ListAttachments(context.Context, *ListAttachmentsRequest) (*ListAttachmentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAttachments not implemented")
 }
 func (UnimplementedAttachmentServiceServer) GetAttachment(context.Context, *GetAttachmentRequest) (*Attachment, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAttachment not implemented")
+}
+func (UnimplementedAttachmentServiceServer) CreateAttachment(context.Context, *CreateAttachmentRequest) (*Attachment, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAttachment not implemented")
 }
 func (UnimplementedAttachmentServiceServer) UpdateAttachment(context.Context, *UpdateAttachmentRequest) (*Attachment, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateAttachment not implemented")
@@ -181,6 +186,9 @@ func (UnimplementedAttachmentServiceServer) DeleteAttachment(context.Context, *D
 }
 func (UnimplementedAttachmentServiceServer) BatchDeleteAttachments(context.Context, *BatchDeleteAttachmentsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method BatchDeleteAttachments not implemented")
+}
+func (UnimplementedAttachmentServiceServer) UploadAttachment(context.Context, *UploadAttachmentRequest) (*UploadAttachmentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UploadAttachment not implemented")
 }
 func (UnimplementedAttachmentServiceServer) mustEmbedUnimplementedAttachmentServiceServer() {}
 func (UnimplementedAttachmentServiceServer) testEmbeddedByValue()                           {}
@@ -201,42 +209,6 @@ func RegisterAttachmentServiceServer(s grpc.ServiceRegistrar, srv AttachmentServ
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&AttachmentService_ServiceDesc, srv)
-}
-
-func _AttachmentService_CreateAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateAttachmentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AttachmentServiceServer).CreateAttachment(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AttachmentService_CreateAttachment_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttachmentServiceServer).CreateAttachment(ctx, req.(*CreateAttachmentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AttachmentService_UploadAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UploadAttachmentRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AttachmentServiceServer).UploadAttachment(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AttachmentService_UploadAttachment_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AttachmentServiceServer).UploadAttachment(ctx, req.(*UploadAttachmentRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _AttachmentService_ListAttachments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -271,6 +243,24 @@ func _AttachmentService_GetAttachment_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AttachmentServiceServer).GetAttachment(ctx, req.(*GetAttachmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AttachmentService_CreateAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAttachmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).CreateAttachment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_CreateAttachment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).CreateAttachment(ctx, req.(*CreateAttachmentRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -329,21 +319,31 @@ func _AttachmentService_BatchDeleteAttachments_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttachmentService_UploadAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadAttachmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).UploadAttachment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_UploadAttachment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).UploadAttachment(ctx, req.(*UploadAttachmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AttachmentService_ServiceDesc is the grpc.ServiceDesc for AttachmentService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var AttachmentService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "memos.api.v1.AttachmentService",
+	ServiceName: "memos.api.AttachmentService",
 	HandlerType: (*AttachmentServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "CreateAttachment",
-			Handler:    _AttachmentService_CreateAttachment_Handler,
-		},
-		{
-			MethodName: "UploadAttachment",
-			Handler:    _AttachmentService_UploadAttachment_Handler,
-		},
 		{
 			MethodName: "ListAttachments",
 			Handler:    _AttachmentService_ListAttachments_Handler,
@@ -351,6 +351,10 @@ var AttachmentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAttachment",
 			Handler:    _AttachmentService_GetAttachment_Handler,
+		},
+		{
+			MethodName: "CreateAttachment",
+			Handler:    _AttachmentService_CreateAttachment_Handler,
 		},
 		{
 			MethodName: "UpdateAttachment",
@@ -364,7 +368,11 @@ var AttachmentService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "BatchDeleteAttachments",
 			Handler:    _AttachmentService_BatchDeleteAttachments_Handler,
 		},
+		{
+			MethodName: "UploadAttachment",
+			Handler:    _AttachmentService_UploadAttachment_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/attachment_service.proto",
+	Metadata: "api/attachment_service.proto",
 }
