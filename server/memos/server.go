@@ -25,6 +25,8 @@ import (
 	"github.com/mudkipme/mortis/utils"
 )
 
+const topLevelMemoFilter = "parent == null"
+
 type Server struct {
 	baseURL    string
 	httpClient *http.Client
@@ -246,7 +248,7 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 	for _, relation := range resp.Relations {
 		// Memos 0.21 returned only relations owned by the requested memo.
 		// Memos 0.31 also includes incoming relations in the memo response.
-		if relation.GetMemo().GetName() != name {
+		if relation.GetMemo().GetName() != name || relation.GetType() != apipb.MemoRelation_REFERENCE {
 			continue
 		}
 		relatedName := relation.GetRelatedMemo().GetName()
@@ -255,13 +257,7 @@ func (s *Server) GetMemoRelations(ctx echo.Context, memoId int) error {
 		}
 		relatedMemoID := int(hashToInt53(strings.TrimPrefix(relatedName, "memos/")))
 		s.memoIdToName.Store(relatedMemoID, relatedName)
-		var relationType api.MemoRelationType
-		switch relation.Type {
-		case apipb.MemoRelation_COMMENT:
-			relationType = api.MemoRelationComment
-		case apipb.MemoRelation_REFERENCE:
-			relationType = api.MemoRelationReference
-		}
+		relationType := api.MemoRelationReference
 
 		relations = append(relations, &api.MemoRelation{
 			MemoID:        &memoId,
@@ -295,23 +291,25 @@ func (s *Server) GetStatus(ctx echo.Context) error {
 
 // ListMemos implements api.ServerInterface.
 func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
-	filter := ""
+	var creatorName string
 	if params.CreatorId != nil {
 		name, err := s.searchUserId(ctx, *params.CreatorId)
 		if err != nil {
 			slog.ErrorContext(ctx.Request().Context(), "failed to search user id", "creatorId", *params.CreatorId, "error", err)
 			return err
 		}
-		filter = s.memoCreatorFilter(name)
+		creatorName = name
 	} else {
 		user := &apipb.GetCurrentUserResponse{}
 		if err := s.doProtoRequest(ctx, http.MethodGet, "/api/auth/me", nil, nil, user); err != nil {
 			slog.ErrorContext(ctx.Request().Context(), "failed to get current user", "error", err)
 			return err
 		}
-		if user.GetUser() != nil {
-			filter = s.memoCreatorFilter(user.GetUser().GetName())
-		}
+		creatorName = user.GetUser().GetName()
+	}
+	filter := topLevelMemoFilter
+	if creatorName != "" {
+		filter += fmt.Sprintf(" && creator == %q", creatorName)
 	}
 
 	state := apipb.State_STATE_UNSPECIFIED
@@ -328,9 +326,7 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 			if pageToken != "" {
 				query.Set("pageToken", pageToken)
 			}
-			if filter != "" {
-				query.Set("filter", filter)
-			}
+			query.Set("filter", filter)
 			if state != apipb.State_STATE_UNSPECIFIED {
 				query.Set("state", state.String())
 			}
@@ -369,9 +365,7 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 			if pageToken != "" {
 				query.Set("pageToken", pageToken)
 			}
-			if filter != "" {
-				query.Set("filter", filter)
-			}
+			query.Set("filter", filter)
 			if state != apipb.State_STATE_UNSPECIFIED {
 				query.Set("state", state.String())
 			}
@@ -418,7 +412,7 @@ func (s *Server) ListMemos(ctx echo.Context, params api.ListMemosParams) error {
 
 // ListPublicMemos implements api.ServerInterface.
 func (s *Server) ListPublicMemos(ctx echo.Context, params api.ListPublicMemosParams) error {
-	filter := "visibility in [\"PUBLIC\", \"PROTECTED\"]"
+	filter := topLevelMemoFilter + ` && visibility in ["PUBLIC", "PROTECTED"]`
 	var allResp []*apipb.Memo
 	if params.Limit == nil && params.Offset == nil {
 		pageToken := ""
@@ -601,7 +595,8 @@ func (s *Server) ListTags(ctx echo.Context) error {
 		return ctx.JSON(200, []string{})
 	}
 	resp := &apipb.UserStats{}
-	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/"+user.GetUser().GetName()+":getStats", nil, nil, resp); err != nil {
+	query := url.Values{"filter": {topLevelMemoFilter}}
+	if err := s.doProtoRequest(ctx, http.MethodGet, "/api/"+user.GetUser().GetName()+":getStats", query, nil, resp); err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to get user stats", "error", err)
 		return err
 	}
@@ -857,19 +852,21 @@ func (s *Server) StreamResource(ctx echo.Context) error {
 	if client == nil {
 		client = http.DefaultClient
 	}
-	resp, err := client.Do(req)
+	streamClient := *client
+	streamClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	resp, err := streamClient.Do(req)
 	if err != nil {
 		slog.ErrorContext(ctx.Request().Context(), "failed to fetch resource binary", "error", err)
 		return err
 	}
 	defer resp.Body.Close()
 
-	contentType := resp.Header.Get("Content-Type")
-	if contentType != "" {
-		ctx.Response().Header().Set("Content-Type", contentType)
-	}
-	if contentLength := resp.Header.Get("Content-Length"); contentLength != "" {
-		ctx.Response().Header().Set("Content-Length", contentLength)
+	for _, header := range []string{"Content-Type", "Content-Length", "Location"} {
+		if value := resp.Header.Get(header); value != "" {
+			ctx.Response().Header().Set(header, value)
+		}
 	}
 
 	ctx.Response().WriteHeader(resp.StatusCode)
@@ -1060,13 +1057,6 @@ func (s *Server) populateMemoCreatorNames(ctx echo.Context, sourceMemos []*apipb
 	}
 }
 
-func (s *Server) memoCreatorFilter(name string) string {
-	if name == "" {
-		return ""
-	}
-	return fmt.Sprintf("creator == %q", name)
-}
-
 func (s *Server) cacheUserName(name string) int {
 	if name == "" {
 		return 0
@@ -1123,6 +1113,7 @@ func (s *Server) searchMemoId(ctx echo.Context, memoId int) (string, error) {
 		for {
 			query := url.Values{}
 			query.Set("pageSize", "200")
+			query.Set("filter", topLevelMemoFilter)
 			if currentPageToken != "" {
 				query.Set("pageToken", currentPageToken)
 			}
