@@ -2,7 +2,7 @@
 
 A self-hosted server that provides [Memos 0.21.0 OpenAPI](https://mudkipme.github.io/mortis/) support for compatible apps like Moe Memos.
 
-It requires Memos 26.11.2 as a backend and translates the legacy API to the current Memos HTTP API.
+It requires Memos 26.11.3 as a backend and translates the legacy API to the current Memos HTTP API.
 
 ## Usage
 
@@ -76,7 +76,7 @@ Here is an example `docker-compose.yml` file to run both Memos and Mortis:
 ```yaml
 services:
     memos:
-        image: neosmemo/memos:26.11.2
+        image: neosmemo/memos:26.11.3
         container_name: memos
         volumes:
             - ./data:/var/opt/memos
@@ -84,7 +84,7 @@ services:
             - "5230:5230"
 
     mortis:
-        image: ghcr.io/mudkipme/mortis:26.11.2
+        image: ghcr.io/mudkipme/mortis:26.11.3
         container_name: mortis
         ports:
             - "5231:5231"
